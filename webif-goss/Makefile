@@ -8,7 +8,10 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=webif-goss
+PKG_VERSION:=0.0.1
 PKG_RELEASE:=1
+
+PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 
 include $(INCLUDE_DIR)/package.mk
 
@@ -16,7 +19,14 @@ define Package/webif-goss
   SECTION:=admin
   CATEGORY:=Administration
   TITLE:=GOSS-Good old shell script webinterface, frontend only
+  VERSION:=$(PKG_VERSION)-$(PKG_RELEASE)
   DEPENDS:=
+endef
+
+define Build/Configure
+endef
+
+define Build/Compile
 endef
 
 define Package/webif-goss/description
@@ -27,7 +37,9 @@ define Package/webif-goss/description
 endef
 
 define Package/webif-goss/install
-	$(INSTALL_DIR) ./files/www
+	mkdir -p $(1)/www
+	$(CP) -r ./files/www/* $(1)/www
+	mkdir -p $(1)/etc/
 	$(CP) ./files/etc/httpd.conf $(1)/etc/httpd.conf
 endef
 
