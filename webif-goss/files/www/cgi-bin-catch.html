@@ -1,0 +1,110 @@
+#!/bin/sh
+
+if [ "$REQUEST_METHOD" = "POST" ]; then
+read QUERY_STRING
+fi
+
+# prepare stuff
+. /www/cgi-bin/dhcpsplash/functions.sh
+mac=$(splash_getmac "$REMOTE_ADDR")
+
+## uris
+# url function need netparam!
+splash_agreement_url() {
+	mode=$(splash_getvar ff_dhcpsplash_ag)
+	if [ "$mode" = "url" ]; then
+		url=$(uci get network.ath0.ipaddr)/$(splash_getvar ff_dhcpsplash_agurl)
+		test -z "$url" && splash_getvar ff_dhcpsplash_agurldefault
+		echo "$url" | sed "
+			s/<wifiip>/$SADR/
+			s/<wifimac>/$(splash_ifmac wifi)/
+			s/<clientip>/$REMOTE_ADDR/
+			s/<clientmac>/$mac/"
+	else
+	splash_getvar ff_dhcpsplash_agurldefault
+	fi
+}
+
+splash_welcome_url() {
+	mode="$(splash_getvar ff_dhcpsplash_hp)"
+	if [ "$mode" = "url" ]; then
+		url="$(uci get network.ath0.ipaddr)/$(splash_getvar ff_dhcpsplash_hpurl)"
+		test -z "$url" && splash_getvar ff_dhcpsplash_hpurldefault
+		echo "$url" | sed "
+			s/<wifiip>/$SADR/
+			s/<wifimac>/$(splash_ifmac wifi)/
+			s/<clientip>/$REMOTE_ADDR/
+			s/<clientmac>/$mac/"
+	else
+		splash_getvar ff_dhcpsplash_hpurldefault
+	fi
+}
+
+# ARG: status message url [relative]
+splash_redirect() {
+if [ "$3" != "${3#http}" -o -n "$4" -a "$4" = "relative" ]; then
+	url="$3"
+        
+else
+        url="http://$(splash_ifipforip "$REMOTE_ADDR")/$3"
+url="$3"
+fi
+moreheaders=''
+if [ "300" -le "$1" -a "$1" -lt "400" ]; then
+	moreheaders="Location: $url"
+fi
+cat<<EOF
+HTTP/1.1 $1 $2
+Connection: close
+Cache-Control: no-cache
+Content-Type: text/html
+$moreheaders
+
+<HTML><HEAD>
+<TITLE>$1 - $2</TITLE>
+<META HTTP-EQUIV="cache-control" CONTENT="no-cache">
+<META HTTP-EQUIV="refresh" CONTENT="0; URL=$url">
+</HEAD><BODY>
+<H1>$1 - $2</H1>
+<P>click <A HREF="$url">here</A> if you are not redirected automatically.</P>
+</BODY></HTML>
+EOF
+}
+
+# redirect requests which are not in our iprange to cgi-bin-index.html
+if ! splash_insplashrange "$REMOTE_ADDR"; then
+	splash_redirect "302" "Temporary Redirect" "cgi-bin-index.html" "relative"
+	exit
+fi	
+
+# redirect blocked macs
+if splash_isblockedmac "$mac"; then
+	splash_redirect "403" "WLAN access blocked" "/cgi-bin-blocked.html"
+	exit
+fi
+
+# show index page for known clients
+if splash_isknownmac "$mac"; then
+	splash_redirect "302" "Temporary Redirect" "cgi-bin-index.html"
+	exit
+fi
+
+# display info page if dhcp is blocked by default
+if [ "$(splash_getvar ff_dhcpsplash_block)" = "all" ]; then
+	splash_redirect "403" "WLAN access blocked" "/cgi-bin-blocked.html"
+	exit
+fi
+
+# WELCOME
+# insert mac into iptables and display welcome page
+if [ "$QUERY_STRING" != "${QUERY_STRING#*post_accept=yes}" -o "$(splash_getvar ff_dhcpsplash_ag)" = "off" ]; then
+	splash_insertmac "$mac"
+        splash_redirect "302" "Temporary Redirect" "$(splash_welcome_url)"
+	exit
+fi
+
+# AGREEMENT
+# goto agreement
+#splash_redirect "403" "WLAN login required" "$(splash_agreement_url)"
+splash_redirect "403" "WLAN login required" "/cgi-bin-agreement.html"
+

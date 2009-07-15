@@ -1,0 +1,8 @@
+ff_dhcpsplash=on
+ff_dhcpsplash_wifi=dhcp
+ff_dhcpsplash_lan=off
+ff_dhcpsplash_agurl=cgi-bin-agreement.html
+ff_dhcpsplash_ag=url
+ff_dhcpsplash_hpurl=cgi-bin-welcome.html
+ff_dhcpsplash_hp=url
+ff_dhcpsplash_block=acl

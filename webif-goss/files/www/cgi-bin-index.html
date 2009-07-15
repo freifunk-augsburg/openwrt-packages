@@ -1,0 +1,41 @@
+#!/bin/sh
+
+export DATE="4.1.2007";SCRIPT=${0#/rom}
+export TITLE="Hallo!"
+. /www/cgi-bin-pre.sh
+
+cat<<EOF
+<H1>Hallo!</H1>
+
+<P>Dies ist ein Freifunk-Zugriffspunkt (neudeutsch: WLAN-Access-Point), auf dem OpenWrt (Kamikaze) mit einem modifizierten Freifunk-Webinterface l&auml;uft. Technische Details &uuml;ber diesen Access-Point sind auf der
+<A HREF="cgi-bin-status.html">Statusseite</A> nachzulesen. Informationen &uuml;ber
+das Freifunk-Projekt finden sich im Internet unter <A HREF="http://www.freifunk.net/">http://www.freifunk.net/</A>.<br>
+Die Seite der Augsburger Freifunker ist erreichbar unter <A HREF="http://augsburg.freifunk.net/">http://augsburg.freifunk.net/</A></P>
+<DIV><A HREF="http://openwrt.org/"><IMG ALIGN="right" ALT="OpenWrt Logo" BORDER="0" HEIGHT="31" SRC="images/openwrt.gif" WIDTH="88" TITLE="OpenWrt Logo"></A></DIV>
+
+<P><B>Hinweis</B>: Freifunk-Firmware und
+Freifunk-Webadmin basieren auf der ganz hervorragenden Linux-Distribution
+<A HREF="http://openwrt.org/">OpenWRT</A>.<p>
+
+<CENTER><IMG ALT="Im Ad-Hoc die BSSID=02:ca:ff:ee:ba:be benutzen..." BORDER="0" SRC="images/intro.jpg" TITLE="Im Ad-Hoc die BSSID=02:ca:ff:ee:ba:be benutzen..."><BR CLEAR="all">
+</CENTER>
+
+<H2>Einige Links</H2>
+
+<UL>
+<LI><A HREF="http://www.freifunk.net/wiki/FreifunkFirmware"></A><A HREF="http://www.freifunk.net/wiki/FreifunkFirmware">Freifunk-Firmware-Seite im Freifunk.net</A></LI>
+<LI><A HREF="http://styx.commando.de/sven-ola/ipkg/">Freifunk-Firmware
+und IPK-Downloads</A></LI>
+<LI><A HREF="http://freifunk.net/idee/was_ist_freifunk">Was ist Freifunk? Infos zur Technik und Idee</A></LI>
+
+
+<LI><A HREF="cgi-bin-dev-zero.bin">Endlos-Download aus /dev/zero</A></LI>
+</UL>
+
+<P><B>Hinweis</B>: Der Abruf von Internet-Seiten &uuml;ber
+das Freifunk-Netzwerk ist an technische und organisatorische Bedingungen
+gekn&uuml;pft. M&ouml;glicherweise funktionieren daher die Verkn&uuml;pfungen
+zu Internet-Seiten nicht.</P>
+EOF
+
+. /www/cgi-bin-post.sh

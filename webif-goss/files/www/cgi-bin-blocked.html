@@ -1,0 +1,13 @@
+#!/bin/sh
+
+. /www/cgi-bin/dhcpsplash/functions.sh
+
+export DATE="12.1.2006";SCRIPT=${0#/rom}
+export TITLE="$(splash_gettext blocked_title)"
+. ${SCRIPT%/*}/cgi-bin-pre.sh
+
+echo "<h1>$TITLE</h1><p>"
+splash_gettext blocked_message
+echo "</p>"
+
+. ${SCRIPT%/*}/cgi-bin-post.sh

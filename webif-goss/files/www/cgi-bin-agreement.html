@@ -1,0 +1,41 @@
+#!/bin/sh
+
+. /www/cgi-bin/dhcpsplash/functions.sh
+
+export DATE="12.1.2006";SCRIPT=${0#/rom}
+export TITLE="$(splash_gettext agreement_title)"
+
+. /www/cgi-bin-pre.sh
+
+if [ "$REQUEST_METHOD" = "POST" ]; then
+read QUERY_STRING
+fi
+
+# prepare stuff
+mac=$(splash_getmac "$REMOTE_ADDR")
+
+splash_isknownmac "$mac" && known="1"
+test "$(splash_getvar ff_dhcpsplash_ag)" = "off" && known="1"
+
+echo "<h1>$TITLE</h1><p>"
+
+test -z "$known" && \
+splash_gettext agreement_unknown_pre || \
+splash_gettext agreement_known_pre
+
+echo '</p><textarea cols="80" rows="30" readonly wrap="virtual">'
+splash_gettext "agreement"
+echo '</textarea>'
+
+if [ -z "$known" ]; then
+cat<<EOF
+<form action="cgi-bin-catch.html" method="POST">
+<p><input type="checkbox" name="post_accept" value="yes"><b>
+EOF
+splash_gettext accept_cb
+cat<<EOF
+</b></p><input type="submit" value="login &gt; &gt;" /></form>
+EOF
+fi
+
+. /www/cgi-bin-post.sh
