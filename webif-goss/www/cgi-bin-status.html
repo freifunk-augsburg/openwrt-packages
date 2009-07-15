@@ -1,0 +1,485 @@
+#!/bin/sh
+
+export DATE="3.12.2008";SCRIPT=${0#/rom}
+export TITLE="Status: OLSR"
+. /www/cgi-bin-pre.sh
+
+WLDEV=$(sed -n 's/^ *\([^:]\+\):.*/\1/p' /proc/net/wireless)
+ff_httpinfo=$(nvram get ff_httpinfo)
+if [ "$REQUEST_METHOD" = "POST" ]; then
+read QUERY_STRING
+fi
+if [ "$QUERY_STRING" != "${QUERY_STRING#*post_olsr=}" ]; then
+
+cat<<EOF
+<H1>Status: OLSR</H1>
+<FORM ACTION="cgi-bin-status.html" METHOD="POST">
+<TABLE CLASS="shadow0" CELLPADDING="0" CELLSPACING="0"><TR><TD><TABLE CLASS="shadow1" CELLPADDING="0" CELLSPACING="0"><TR><TD><TABLE CLASS="shadow2" CELLPADDING="0" CELLSPACING="0"><TR><TD><TABLE BORDER="1" CELLPADDING="0" CELLSPACING="0" CLASS="formfixwidth">
+<TR>
+<TD><INPUT NAME="post_overview" TITLE="Allgemeine Eigenschaften des Ger&auml;tes in einer &Uuml;bersicht anzeigen" VALUE="&Uuml;bersicht" TYPE="submit">&nbsp;&nbsp;&nbsp;<INPUT NAME="post_route" TITLE="Die aktuelle Routingtabelle des Ger&auml;tes anzeigen" VALUE="Routen" TYPE="submit">
+&nbsp;
+<INPUT NAME="post_scan" TITLE="Scan nach empfangbaren WLAN-Stationen ausf&uuml;hren" value="WLAN Scan" TYPE="submit">
+&nbsp;
+<INPUT NAME="post_olsr" TITLE="OLSR Statusseite anzeigen" value="OLSR-Info" TYPE="submit">
+</TD>
+</TR>
+<TR>
+<TD>&nbsp;</TD>
+</TR>
+<TR>
+<TD>
+EOF
+
+wget -q -O - http://127.0.0.1:2006/|sed -ne'
+/^Table:/,/^$/{
+s#^Table: \(.*\)#<H2>\1</H2><\TABLE BORDER="1" CELLSPACING="0" CELLPADDING="0" WIDTH="100%">#
+:n
+p
+n
+s#[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+#<A HREF="http://&/">&</A>#g
+s/		/	-	/g
+s/	$//
+s#	#</TD><TD>#g
+s#.\+#<TR><TD>&</TD></TR>#
+s/./&/
+tn
+c\
+<\/TABLE>
+p
+}
+'
+
+
+cat<<EOF
+</TD>
+</TR>
+</TABLE></TD></TR></TABLE></TD></TR></TABLE></TD></TR></TABLE>
+</FORM>
+EOF
+
+elif [ "$QUERY_STRING" != "${QUERY_STRING#*post_route=}" ]; then
+
+cat<<EOF
+<H1>Status: Routen</H1>
+<FORM ACTION="cgi-bin-status.html" METHOD="POST">
+<TABLE CLASS="shadow0" CELLPADDING="0" CELLSPACING="0"><TR><TD><TABLE CLASS="shadow1" CELLPADDING="0" CELLSPACING="0"><TR><TD><TABLE CLASS="shadow2" CELLPADDING="0" CELLSPACING="0"><TR><TD><TABLE BORDER="1" CELLPADDING="0" CELLSPACING="0" CLASS="formfixwidth">
+<TR>
+<TD><INPUT NAME="post_overview" TITLE="Allgemeine Eigenschaften des Ger&auml;tes in einer &Uuml;bersicht anzeigen" VALUE="&Uuml;bersicht" TYPE="submit">&nbsp;&nbsp;&nbsp;<INPUT NAME="post_route" TITLE="Die aktuelle Routingtabelle des Ger&auml;tes anzeigen" VALUE="Routen" TYPE="submit">
+&nbsp;
+<INPUT NAME="post_scan" TITLE="Scan nach empfangbaren WLAN-Stationen ausf&uuml;hren" VALUE="WLAN Scan" TYPE="submit">
+&nbsp;
+<INPUT NAME="post_olsr" TITLE="OLSR Statusseite anzeigen" VALUE="OLSR-Info" TYPE="submit">
+</TD>
+</TR>
+<TR>
+<TD>&nbsp;</TD>
+</TR>
+<TR>
+<TD>
+EOF
+
+echo '<''TABLE BORDER="0" CELLPADDING="0" CELLSPACING="0" WIDTH="400">'
+for i in olsr main dyngw;do ip r l table $i;done|sed -e'
+s#^\([^ ]\+\)\(.*\)#<TR>\
+<TD STYLE="padding:0 2 0 2;font-size:9px;">\1</TD>\
+<TD STYLE="padding:0 2 0 2;font-size:9px;">\2</TD>\
+</TR>#
+s#\([0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+\)\([ <]\)#<A HREF="http://\1/">\1</A>\2#g
+'
+echo '<''/TABLE>'
+
+cat<<EOF
+</TD>
+</TR>
+</TABLE></TD></TR></TABLE></TD></TR></TABLE></TD></TR></TABLE>
+</FORM>
+EOF
+
+elif [ "$QUERY_STRING" != "${QUERY_STRING#*post_scan=}" ]; then
+
+cat<<EOF
+<H1>Status: WLAN
+Scan</H1>
+<FORM ACTION="cgi-bin-status.html" METHOD="POST">
+<TABLE CLASS="shadow0" CELLPADDING="0" CELLSPACING="0"><TR><TD><TABLE CLASS="shadow1" CELLPADDING="0" CELLSPACING="0"><TR><TD><TABLE CLASS="shadow2" CELLPADDING="0" CELLSPACING="0"><TR><TD><TABLE BORDER="1" CELLPADDING="0" CELLSPACING="0" CLASS="formfixwidth">
+<TR>
+<TD COLSPAN="7"><INPUT NAME="post_overview" TITLE="Allgemeine Eigenschaften des Ger&auml;tes in einer &Uuml;bersicht anzeigen" VALUE="&Uuml;bersicht" TYPE="submit">&nbsp;&nbsp;&nbsp;<INPUT NAME="post_route" TITLE="Die aktuelle Routingtabelle des Ger&auml;tes anzeigen" VALUE="Routen" TYPE="submit">
+&nbsp;
+<INPUT NAME="post_scan" TITLE="Scan nach empfangbaren WLAN-Stationen ausf&uuml;hren" VALUE="WLAN Scan" TYPE="submit">
+&nbsp;
+<INPUT NAME="post_olsr" TITLE="OLSR Statusseite anzeigen" VALUE="OLSR-Info" TYPE="submit">
+</TD>
+</TR>
+<TR>
+<TD COLSPAN="7">&nbsp;</TD>
+</TR>
+<TR>
+<TH>SSID</TH>
+<TH>Kanal</TH>
+<TH>Ad-Hoc</TH>
+<TH>Open</TH>
+<TH>Signal</TH>
+<TH>Max.</TH>
+<TH>BSSID</TH>
+</TR>
+<TR>
+<TD COLSPAN="7">
+EOF
+
+echo '</TR>'
+(/rom/usr/sbin/wl -i $WLDEV scan 2>&- && (sleep 2;/rom/usr/sbin/wl -i $WLDEV scanresults 2>&-|sed -ne'
+/^$/d
+/^WSEC/d
+/^SSID:/{
+s/[\$\`"\\]//g
+s/: \(.*\)/="\1"/
+h
+d
+}
+/^Supported Rates:/{
+s/.* \([0-9]\+\).*/RATE="\1"/
+H
+g
+s/\n/ /g
+p
+}
+s/ dBm//g
+s/: \+\([^	]\+\)/="\1"/g
+s/ \+"/"/g
+s/Mode="Ad Hoc"/ADHOC="yes"/
+s/Mode="[^"]\+"/ADHOC="no"/
+s/Capability=".* WEP .*/OPEN="no"/
+s/Capability.*/OPEN="yes"/g
+H
+') || iwlist $WLDEV scanning 2>&-|sed -ne'
+1{
+s/.*/ignore/
+h
+d
+}
+/Address:/{
+s/^[^:]*: *\([0-9A-F:]*\)/BSSID="\1" IWTOOLS=1/
+x
+s/\n/ /g
+tx
+:x
+s/^ignore$//
+t
+p
+}
+${
+x
+s/\n/ /g
+p
+}
+/ESSID:/{
+s/^[^:]*:"//
+s/.$//
+s/[\$\`"\\]//g
+s/.*/SSID="&"/g
+H
+}
+/Mode:/{
+s/^[^:]*:Ad-Hoc/ADHOC="yes"/
+s/^[^:]*:.*/ADHOC="no"/
+H
+}
+/Frequency:/{
+s/^[^(]*(Channel *\([0-9]*\).*/Channel="\1"/
+H
+}
+/Channel:/{
+s/^[^:]*:\([0-9]*\).*/Channel="\1"/
+H
+}
+/Quality[:=]/{
+s/^.*Signal level[:=]\([-0-9]*\).*Noise level[:=]\([-0-9]*\).*/RSSI="\1" noise="\2"/
+H
+}
+/Encryption key:/{
+s/^[^:]*:off/OPEN="yes"/
+s/^[^:]*:.*/OPEN="no"/
+H
+}
+')|while read line; do
+RSSI=
+eval $line
+test -z "$noise" && noise=-95
+test -z "$RSSI" && test "1" = "$IWTOOLS" && eval $(iwlist $WLDEV ap 2>&-|sed -ne"
+/$BSSID/s/^.*Signal level[:=]\\([-0-9]*\\).*Noise level[:=]\\([-0-9]*\\).*/RSSI=\"\\1\" noise=\"\\2\"/p
+")
+gif=$(( $RSSI - $noise ))
+gif=$(( $gif / 5 ))
+test $gif -gt 5 && gif=5
+test $gif -lt 0 && gif=0
+cat<<EOF
+<TR><TD>$SSID</TD><TD>$Channel</TD>
+<TD><IMG SRC="images/$ADHOC.gif" ALT="ad hoc" TITLE="Ad-Hoc mode" ALIGN="ABSMIDDLE"></TD>
+<TD><IMG SRC="images/$OPEN.gif" ALT="$OPEN" TITLE="No WEP/WPA" ALIGN="ABSMIDDLE"></TD>
+<TD><IMG SRC="images/power$gif.gif" ALT="P=$gif" TITLE="RSSI: $RSSI dBm, Noise: $noise dBm" ALIGN="ABSMIDDLE"></TD>
+<TD>$RATE</TD><TD>$BSSID</TD></TR>
+EOF
+done
+echo '<TR><TD colspan="7">&nbsp;'
+
+cat<<EOF
+</TD>
+</TR>
+</TABLE></TD></TR></TABLE></TD></TR></TABLE></TD></TR></TABLE>
+</FORM>
+EOF
+
+else
+
+cat<<EOF
+<H1>Status: &Uuml;bersicht</H1>
+<SCRIPT LANGUAGE="JavaScript" TYPE="text/javascript"><!--
+function fold(id) {
+obj = document.getElementById(id);
+obj.style.display = ('none'==obj.style.display?'block':'none');
+return false;
+}
+//--></SCRIPT>
+<FORM ACTION="cgi-bin-status.html" METHOD="POST">
+<TABLE CLASS="shadow0" CELLPADDING="0" CELLSPACING="0"><TR><TD><TABLE CLASS="shadow1" CELLPADDING="0" CELLSPACING="0"><TR><TD><TABLE CLASS="shadow2" CELLPADDING="0" CELLSPACING="0"><TR><TD><TABLE BORDER="1" CELLPADDING="0" CELLSPACING="0" CLASS="formfixwidth">
+<TR>
+<TD COLSPAN="2"><INPUT NAME="post_overview" TITLE="Allgemeine Eigenschaften des Ger&auml;tes in einer &Uuml;bersicht anzeigen" VALUE="&Uuml;bersicht" type="submit">&nbsp;&nbsp;&nbsp;<INPUT NAME="post_route" TITLE="Die aktuelle Routingtabelle des Ger&auml;tes anzeigen" VALUE="Routen" type="submit">
+&nbsp;
+<INPUT NAME="post_scan" TITLE="Scan nach empfangbaren WLAN-Stationen ausf&uuml;hren" VALUE="WLAN Scan" type="submit">
+
+&nbsp;
+<INPUT NAME="post_olsr" TITLE="OLSR Statusseite anzeigen" VALUE="OLSR-Info" type="submit">
+EOF
+
+WLMASK=$(ip -f inet addr show dev $WLDEV label $WLDEV |sed -ne'2{s# \+inet \([0-9\.\/]\+\).*#\1#;p}')
+
+cat<<EOF
+</TD>
+</TR>
+<TR>
+<TD COLSPAN="2">&nbsp;</TD>
+</TR>
+<TR>
+<TD>IP
+Adresse:</TD>
+<TD>IP:&nbsp;$(ip -f inet addr show dev $WLDEV label $WLDEV |sed -ne'2{s/ \+inet \([0-9\.]\+\).*/\1/;p}'),
+Maske:&nbsp;$(test -n "$WLMASK" && ipcalc -m $WLMASK|cut -d'=' -f2),
+MAC:&nbsp;$(ip link show dev $WLDEV|sed -ne'2{s/.*ether \+\([^ ]\+\).*/\1/;p}')</TD>
+</TR>
+<TR>
+<TD>WLAN-Status:</TD>
+<TD>
+EOF
+
+if /rom/usr/sbin/wl -i $WLDEV status 2>&-;then
+echo "<br>"
+/rom/usr/sbin/wl -i $WLDEV rate
+/rom/usr/sbin/wl -i $WLDEV mrate
+else
+iwconfig $WLDEV 2>&-
+fi
+
+cat<<EOF
+</TD>
+</TR>
+<TR>
+<TD>Ger&auml;telaufzeit:</TD>
+<TD>$(uptime)</TD>
+</TR>
+<TR>
+<TD>Ger&auml;teinfo:</TD>
+<TD>Boardtype: $(nvram get boardtype), Boardnum: $(nvram get boardnum)</TD>
+</TR>
+<TR>
+<TD>Versionen:</TD>
+<TD>Firmware: $(cat /etc/freifunk-release)<BR>Olsrd: $(cat /etc/olsrd-release)</TD>
+</TR>
+<TR>
+<TD>Default-Route:</TD>
+<TD>$(ip route list exact 0/0|sed '1q'|sed 's#\([0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+\)#<A HREF="http://\1/cgi-bin-status.html">\1</A>#')
+EOF
+
+cat<<EOF
+</TD>
+</TR>
+<TR>
+<TD>Nachbarn:</TD>
+<TD>
+EOF
+
+wget -q -O - http://127.0.0.1:2006/neighbours|sed -ne'
+/^Table: Links/{
+s/.*/<\TABLE FRAME="VOID" BORDER="1" CELLSPACING="0" CELLPADDING="1" WIDTH="400">/
+:n
+p
+n
+s/^[^	]*	//
+s/^remote //
+s#\([0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+\)\([^/]\)#<A HREF="http://\1/cgi-bin-status.html">\1</A>\2#g
+s/	$//
+s#	#</TD><TD>#g
+s#.\+#<TR><TD WIDTH="100%">&</TD></TR>#
+s/./&/
+tn
+c\
+<\/TABLE>
+p
+}
+'
+
+cat<<EOF
+</TD>
+</TR>
+<TR>
+<TD>Kernel-Log: </TD>
+<TD><A HREF="#" ONCLICK="return fold('dmesg')">Ein- / Ausblenden</A></TD>
+</TR>
+<TR>
+<TD COLSPAN="2">
+EOF
+
+echo -n '<PRE STYLE="display:none" ID="dmesg">'
+dmesg 2>&1
+echo '</PRE>'
+if pidof syslogd>/dev/null;then
+
+cat<<EOF
+</TD>
+</TR>
+<TR>
+<TD>System-Log: </TD>
+<TD><A HREF="#" ONCLICK="return fold('logread')">Ein- / Ausblenden</A></TD>
+</TR>
+<TR>
+<TD COLSPAN="2">
+EOF
+
+echo -n '<PRE STYLE="display:none" ID="logread">'
+logread 2>&1
+echo '</PRE>'
+fi
+
+cat<<EOF
+</TD>
+</TR>
+<TR>
+<TD>IP-NAT:
+</TD>
+<TD><A HREF="#" ONCLICK="return fold('nat')">Ein- / Ausblenden</A></TD>
+</TR>
+<TR>
+<TD COLSPAN="2">
+EOF
+
+echo -n '<PRE STYLE="display:none" ID="nat">'
+iptables -t nat -L -n -v 2>&1
+echo '</PRE>'
+
+cat<<EOF
+</TD>
+</TR>
+<TR>
+<TD>Schnittstellen-Konfiguration: </TD>
+<TD><A HREF="#" ONCLICK="return fold('ifconfig')">Ein- / Ausblenden</A></TD>
+</TR>
+<TR>
+<TD COLSPAN="2">
+EOF
+
+echo -n '<PRE STYLE="display:none" ID="ifconfig">'
+echo "lan_ifnames=$(nvram get lan_ifnames)"
+echo "lan_ifname=$(nvram get lan_ifname)"
+echo "wl0_ifname=$(nvram get wl0_ifname)"
+echo "wifi_ifname=$(nvram get wifi_ifname)"
+echo "wan_ifname=$(nvram get wan_ifname)"
+echo
+brctl show 2>&1
+echo
+ip addr show 2>&1
+echo '</PRE>'
+
+cat<<EOF
+</TD>
+</TR>
+<TR>
+<TD>NVRAM-Konfiguration: </TD>
+<TD><A HREF="#" ONCLICK="return fold('nvram')">Ein- / Ausblenden</A></TD>
+</TR>
+<TR>
+<TD COLSPAN="2">
+EOF
+
+echo -n '<PRE STYLE="display:none" ID="nvram">'
+nvram show 2>&-|sort|sed -ne'
+/^lan_/p
+/^wan_/p
+/^vlan/p
+/^wifi_/p
+/^static_route/p
+/^wl0_/{
+s/wpa\|wep\|key\|txpwr/&/
+t
+p
+}
+/^ff_/{
+s/adm\|key\|pw\|pass\|user\|txpwroverride/&/
+t
+p
+}
+'
+echo '</PRE>'
+
+cat<<EOF
+</TD>
+</TR>
+<TR>
+<TD>Aktive
+Verbindungen:
+</TD>
+<TD><A HREF="#" ONCLICK="return fold('conntrk')">Ein- / Ausblenden</A></TD>
+</TR>
+<TR>
+<TD COLSPAN="2">
+EOF
+
+echo -n '<PRE STYLE="display:none" ID="conntrk">'
+eval $(sed -e'
+s/src=\([0-9\.]\+\).*/conn_\1=$(( \$conn_\1 + 1 ));/
+s/^.* conn_/conn_/
+s/\./_/g
+' /proc/net/ip_conntrack)
+set|sed -ne"
+s/^conn_//
+tp
+b
+:p
+s/_/./g
+s/^\(.*\)='\([0-9]\+\)'/\2	\1/
+p
+"|sort
+echo '</PRE>'
+
+cat<<EOF
+</TD>
+</TR>
+</TABLE></TD></TR></TABLE></TD></TR></TABLE></TD></TR></TABLE>
+</FORM>
+EOF
+
+if [ "00:90:96:00:00:00" = "$(nvram get et0macaddr)" ] || [ "00:90:96:00:00:02" = "$(nvram get il0macaddr)" ]; then
+
+cat<<EOF
+<P><B>Warnung</B>:
+Dieses SE505-Ger&auml;t hat nicht die korrekte MAC-Adresse. Das passiert
+beim Wiederherstellen der Ausliefer-Einstellungen. Lies die MAC-Adresse
+vom Ger&auml;teboden ab und korrigiere manuell auf der Kommandozeile, z.B.
+mit <CODE>nvram&nbsp;set&nbsp;et0macaddr=xx:xx:xx:xx:xx:xx</CODE>,
+<CODE>nvram&nbsp;set&nbsp;il0macaddr=xx:xx:xx:xx:xx:[xx+1]</CODE>,
+<CODE>nvram&nbsp;commit</CODE> und <CODE>reboot</CODE>.
+</P>
+EOF
+
+fi
+fi
+
+. /www/cgi-bin-post.sh
