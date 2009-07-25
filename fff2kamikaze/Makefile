@@ -19,7 +19,6 @@ define Package/fff2kamikaze
   SECTION:=admin
   CATEGORY:=Administration
   TITLE:=Converts NVRAM Variables from FFF to Kamikaze UCI config. 
-  DESCRIPTION:=You have to use \"nvram set ff2kamikaze=1;nvram commit\" on the FFF Router BEFORE flashing Kamikaze with this package. If the variable is set, it will convert your settings to uci.
   VERSION:=$(PKG_VERSION)-$(PKG_RELEASE)
   DEPENDS:=
 endef
