@@ -18,7 +18,7 @@ include $(INCLUDE_DIR)/package.mk
 define Package/fff2kamikaze
   SECTION:=admin
   CATEGORY:=Administration
-  TITLE:=Converts NVRAM Variables from FFF to Kamikaze UCI config. 
+  TITLE:=Converts NVRAM Variables from FFF to Kamikaze UCI config
   VERSION:=$(PKG_VERSION)-$(PKG_RELEASE)
   DEPENDS:=
 endef
@@ -38,8 +38,9 @@ endef
 
 define Package/fff2kamikaze/install
 	mkdir -p $(1)/etc/init.d/
+	mkdir -p $(1)/etc/rc.d/
 	$(CP) ./files/etc/init.d/fff2kamikaze $(1)/etc/init.d/
+	$(CP) ./files/etc/rc.d/S98fff2kamikaze $(1)/etc/init.d/
 	endef
 
 $(eval $(call BuildPackage,fff2kamikaze))
-
