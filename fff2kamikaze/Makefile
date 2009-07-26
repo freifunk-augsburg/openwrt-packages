@@ -20,7 +20,7 @@ define Package/fff2kamikaze
   CATEGORY:=Administration
   TITLE:=FFF Nvram to UCI conversion
   VERSION:=$(PKG_VERSION)-$(PKG_RELEASE)
-  DEPENDS:=
+  DEPENDS:=@TARGET_brcm_2_4||TARGET_brcm47xx
 endef
 
 define Build/Configure
