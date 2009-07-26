@@ -4,10 +4,12 @@
 START=98
 boot() {
 
-if [ ! "`nvram get fff2kamikaze`"= "1" ];then
-echo "Not starting since fff2kamikaze is not set to 1 in nvram"
-exit
+if [ ! "`nvram get fff2kamikaze`" = "1" ];then
+	echo "NOT starting FFF-NVRAM to UCI conversion. fff2kamikaze!=0"
+	exit
 fi
+
+echo "Starting FFF-NVRAM to UCI conversion"
 
 # This is free software, licensed under the GNU General Public License v2.
 # See http://www.gnu.de/documents/gpl-2.0.en.html for more information.
