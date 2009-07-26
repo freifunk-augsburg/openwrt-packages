@@ -23,6 +23,12 @@ define Package/fff2kamikaze
   DEPENDS:=
 endef
 
+define Build/Configure
+endef
+
+define Build/Compile
+endef
+
 define Package/fff2kamikaze/description
   This is the public part of the well known Freifunk Firmware ported to Kamikaze.
   This interface is meant for people who can configure their Router from the commandline
