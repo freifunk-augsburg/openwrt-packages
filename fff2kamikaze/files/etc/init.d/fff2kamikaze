@@ -9,16 +9,17 @@ if [ ! "`nvram get fff2kamikaze`" = "1" ];then
 	exit
 fi
 
-echo "Starting FFF-NVRAM to UCI conversion"
+echo "### Starting FFF-NVRAM to UCI conversion ###"
 
 # This is free software, licensed under the GNU General Public License v2.
 # See http://www.gnu.de/documents/gpl-2.0.en.html for more information.
 
 # author: soma
-# Version: 0.0.1 / 07252009
+VERSION="0.0.1 / 07262009"
 
-set -x
-echo "Migration Script from FFF to LUCI-Kamikaze"
+echo "### Migration Script from FFF to LUCI-Kamikaze, Version: $VERSION ###"
+
+cp -r /etc/config/ /etc/config.orig
 
 #----------#
 # passwort #
@@ -397,12 +398,12 @@ if [ "`nvram get ff_dyngw`" = "0" ];then
 fi
 
 for iface in $olsrifs;do
-	test -z "`nvram get ff_will`" && uci set olsrd.@olsrd[0].Willingness="`nvram get ff_will`"
+	test -n "`nvram get ff_will`" && uci set olsrd.@olsrd[0].Willingness="`nvram get ff_will`"
 	uci add olsrd Interface
 	uci set olsrd.@Interface[-1]='Interface'
 	uci set olsrd.@Interface[-1].ignore='0'
 	uci set olsrd.@Interface[-1].interface="$iface"
-	test -z "`nvram get ff_ip4broad`" && uci set olsrd.@Interface[-1].Ip4Broadcast="`nvram get ff_ip4broad`"
+	test -n "`nvram get ff_ip4broad`" && uci set olsrd.@Interface[-1].Ip4Broadcast="`nvram get ff_ip4broad`"
 	ff_olsrspeed=`nvram get ff_olsrspeed`
 	if test -n "$ff_olsrspeed";then
 		if [ $ff_olsrspeed -lt 2 ];then $ff_olsrspeed="2";fi
@@ -610,15 +611,15 @@ fi
 
 uci commit
 
-# If we have run succesfully, then disable the wizard if it exists and unset ff2kamikaze
+# If we have run succesfully, then disable the wizard if it exists and unset fff2kamikaze
 # also disable ourself
 
-test -z /etc/init.d/wizard && disable /etc/init.d/wizard
+test -f /etc/init.d/wizard && /etc/init.d/wizard disable
 
 /etc/init.d/fff2kamikaze disable
 nvram unset fff2kamikaze;nvram commit
 
-echo "Migration finished. Will restart services now."
+echo "### Migration finished. Will restart services now. ###"
 
 services="network firewall olsrd dnsmasq"
 for service in $services;do
