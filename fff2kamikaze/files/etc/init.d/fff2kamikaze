@@ -3,9 +3,9 @@
 
 START=98
 boot() {
-
+set -x
 if [ ! "`nvram get fff2kamikaze`" = "1" ];then
-	echo "NOT starting FFF-NVRAM to UCI conversion. fff2kamikaze!=0"
+	echo "NOT starting FFF-NVRAM to UCI conversion. fff2kamikaze!=1"
 	exit
 fi
 
@@ -113,13 +113,14 @@ EOF
                 uci set network.wifi0.dns="$dns"
                 done
         fi
-
-	olsrifs="$wifiifname"
+	if [ "`nvram get wl0_mode`" = "sta" ] && [ ! "`nvram get wl0_infra`" = "1" ];then
+		olsrifs="$wifiifname"
+	fi
 fi
 
 ## wireless settings
 ### wifi device
-if [ "$wifi_proto" = "none" ] || [ "wl_gmode" = "-1" ];then
+if [ "$wifi_proto" = "disabled" ] || [ "`nvram get wl_gmode`" = "-1" ];then
 	uci set wireless.$wifidevice.disabled='1'
 else
 	uci set wireless.$wifidevice.disabled='0'
@@ -155,12 +156,12 @@ fi
 wifi_mode="`nvram get wl0_mode`"  # sta|ap
 wifi_infra="`nvram get wl0_infra`"  # 0 ad-hoc, 1 managed
 if [ "$wifi_mode" = "ap" ];then
-	wifi_mode="master"
+	wifi_mode="ap"
 fi
 
 if [ "$wifi_mode" = "sta" ];then
 	if [ "$wifi_infra" = "1" ];then
-        wifi_mode="managed"
+        wifi_mode="sta"
 	else
 	wifi_mode="adhoc"
 	fi
@@ -222,6 +223,7 @@ lan_proto="`nvram get lan_proto`"
 
 if [ "$lan_proto" = "disabled" ];then
 	uci delete network.lan
+	ifdown lan
 fi
 
 if [ "$lan_proto" = "dhcp" ];then
@@ -244,8 +246,8 @@ EOF
 	fi
 
 	if [ "$lan_proto" = "olsr" ];then
-		lan_ifname=`uci get network.lan.ifname`
-		olsrifs="$olsrifs $lan_ifname"
+	#	lan_ifname=`uci get network.lan.ifname`
+		olsrifs="$olsrifs lan"
 	fi
 fi
 
@@ -480,10 +482,10 @@ if test -n "$ff_ign";then
 	done
 fi
 
-# if firewall is disabled enable nat when ff_nonat!=1 and wan_proto!=olsr
+# if firewall is disabled still enable nat when ff_nonat!=1
 
-if [ "`nvram get fw_disable`" = "1" ] && [ ! "`nvram get ff_nonat`" = "1" ] || [ "`nvram get wan_proto`" = "olsr" ];then
-uci batch <<EOF
+if [ "`nvram get fw_disable`" = "1" ];then
+uci batch << EOF
 add firewall defaults
 set firewall.@defaults[0].syn_flood=1
 set firewall.@defaults[0].input=ACCEPT
@@ -498,16 +500,15 @@ set firewall.@zone[-1].input=ACCEPT
 set firewall.@zone[-1].output=ACCEPT
 set firewall.@zone[-1].forward=ACCEPT
 EOF
-	if [ "`nvram get wan_proto`" = "olsr" ];then
+	if [ "`nvram get ff_nonat`" ];then
 		set firewall.@zone[-1].masq=0
 	else
 		firewall.@zone[-1].masq=1
 	fi
-
 fi
 }
 
-if [ "`nvram get fw_disable`" = "1" ] || [ "`nvram get wan_proto`" = "olsr" ];then
+if [ "`nvram get fw_disable`" = "1" ];then
 	echo "" > /etc/config/firewall
 	$(firewall_common)
 else
@@ -517,25 +518,43 @@ else
 uci batch <<EOF
 add firewall zone
 set firewall.@zone[-1]=zone
-set firewall.@zone[-1].network=$wifiifname
+set firewall.@zone[-1].network="$olsrifs"
 set firewall.@zone[-1].input=REJECT
 set firewall.@zone[-1].forward=REJECT
 set firewall.@zone[-1].name=freifunk
 set firewall.@zone[-1].output=ACCEPT
 EOF
-	if [ "`nvram get ff_nonat`" = "1" ] || [ "`nvram get lan_proto`" = "olsr" ];then
+	if [ "`nvram get ff_nonat`" = "1" ];then
 		uci set firewall.@zone[-1].masq=0
 	else
 		uci set firewall.@zone[-1].masq=1
 	fi
 
+	if [ "`nvram get wan_proto`" = "olsr" ];then
+		wanzoneid="`uci show firewall |grep 'firewall.@zone\[[0-9]\].name=wan' | cut -d '.' -f2`"
+		 uci delete firewall.$wanzoneid
+		mtufixid="`uci show firewall |grep 'firewall.@forwarding\[[0-9]\].mtu_fix=1' | cut -d '.' -f2`"
+		 uci delete firewall.$mtufixid
+	fi
+
+        if [ "`nvram get lan_proto`" = "olsr" ];then 
+                lanzoneid="`uci show firewall |grep 'firewall.@zone\[[0-9]\].name=lan' | cut -d '.' -f2`"
+                 uci delete firewall.$lanzoneid
+        fi
+
 ## setup freifunk rules 
+uci set firewall.@defaults[0].drop_invalid=0
+
+if [ ! "`nvram get lan_proto`" = "olsr" ];then
 uci batch <<EOF
-set firewall.@defaults[0].drop_invalid=0
 add firewall forwarding
 set firewall.@forwarding[-1]=forwarding
 set firewall.@forwarding[-1].dest=freifunk
 set firewall.@forwarding[-1].src=lan
+EOF
+fi
+
+uci batch <<EOF
 add firewall rule
 set firewall.@rule[-1]=rule
 set firewall.@rule[-1].dest_port=698
@@ -575,6 +594,9 @@ set firewall.@forwarding[-1].dest=freifunk
 set firewall.@forwarding[-1].src=freifunk
 EOF
 
+
+# only set wan input rules if wan_proto!=olsr. if it is, then it belongs to the freifunk zone
+if [ ! "`nvram get wan_proto`" = "olsr" ];then
 	if [ "`nvram get ff_wanssh`" = "1" ];then
 uci batch <<EOF
 add firewall rule
@@ -606,6 +628,7 @@ set firewall.@rule[-1].target=ACCEPT
 set firewall.@rule[-1].src=wan
 EOF
 	fi
+fi
 
 fi
 
