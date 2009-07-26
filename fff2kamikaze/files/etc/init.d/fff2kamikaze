@@ -4,7 +4,7 @@
 START=98
 boot() {
 
-if [ ! "`nvram get fff2kamikaze="1"` ];then
+if [ ! "`nvram get fff2kamikaze`"= "1" ];then
 logger -t fff2kamikaze.notice "NOT starting FFF-NVRAM to UCI conversion. fff2kamikaze!=0"
 exit
 fi
