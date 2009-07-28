@@ -649,18 +649,15 @@ test -f /etc/init.d/wizard && /etc/init.d/wizard disable
 /etc/init.d/fff2kamikaze disable
 nvram unset fff2kamikaze;nvram commit
 
-echo "### Migration finished. Will restart services now. ###"
+#echo "### Migration finished. Will restart services now. ###"
 
-services="network firewall olsrd dnsmasq"
-for service in $services;do
+#services="network firewall olsrd dnsmasq"
+#for service in $services;do
 	/etc/init.d/$service restart
-done
+#done
 
-echo "Restarting dropbear"
-while [ -n "`pidof dropbearkey`" ];do 
-	sleep 1
-done	
-
-/etc/init.d/dropbear restart &
-
+#echo "Restarting dropbear"
+#/etc/init.d/dropbear restart &
+echo "### Migration finished. Will reboot now. ###"
+reboot
 }
