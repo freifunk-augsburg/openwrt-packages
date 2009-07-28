@@ -655,6 +655,12 @@ services="network firewall olsrd dnsmasq"
 for service in $services;do
 	/etc/init.d/$service restart
 done
+
+echo "Restarting dropbear"
+while [ -n "`pidof dropbearkey`" ];do 
+	sleep 1
+done	
+
 /etc/init.d/dropbear restart &
 
 }
