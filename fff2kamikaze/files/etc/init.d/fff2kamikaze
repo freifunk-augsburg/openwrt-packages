@@ -114,7 +114,7 @@ EOF
                 done
         fi
 	if [ "`nvram get wl0_mode`" = "sta" ] && [ ! "`nvram get wl0_infra`" = "1" ];then
-		olsrifs="$wifiifname"
+		olsrifs="$wifidevice"
 	fi
 fi
 
@@ -126,25 +126,33 @@ else
 	uci set wireless.$wifidevice.disabled='0'
 fi
 
-if [ `nvram get wl0_antdiv == "-1"` ]; then
+if [ "`nvram get wl0_antdiv`" == "-1" ]; then
 	uci set wireless.$wifidevice.diversity='1'
 	uci set wireless.$wifidevice.txantenna='0'
 	uci set wireless.$wifidevice.rxantenna='0'
 fi
 
-if [ `nvram get wl0_antdiv == "0"` ]; then
+if [ "`nvram get wl0_antdiv`" == "0" ]; then
 	uci set wireless.$wifidevice.diversity='0'
 	uci set wireless.$wifidevice.txantenna='1'
 	uci set wireless.$wifidevice.rxantenna='1'
 fi
 
-if [ `nvram get wl0_antdiv == "1"` ]; then
+if [ "`nvram get wl0_antdiv`" == "1" ]; then
 	uci set wireless.$wifidevice.diversity='0'
 	uci set wireless.$wifidevice.txantenna='2'
 	uci set wireless.$wifidevice.rxantenna='2'
 fi
 
-uci set wireless.$wifidevice.country=`nvram get wl0_country_code`
+if [ "$wifiifname" = "ath0" ];then
+        countrycode=`nvram get ff_ath_param | tr ' ' '\n' |grep countrycode | sed -e 's/countrycode=//g'`
+        outdoor=`nvram get ff_ath_param | tr ' ' '\n' |grep outdoor | sed -e 's/outdoor=//g'`
+        test -n "$outdoor" && uci set wireless.$wifidevice.outdoor="$outdoor"
+else
+        countrycode="`nvram get wl0_country_code`"
+fi
+test -n "$countrycode" && uci set wireless.$wifidevice.country="$countrycode"
+
 uci set wireless.$wifidevice.channel=`nvram get wl0_channel`
 
 
@@ -180,7 +188,6 @@ EOF
 txpower_qdbm=`nvram get wl0_txpwr`
 txpower_dbm=$(($txpower_qdbm/4))
 uci set wireless.$wifidevice.txpower="$txpower_dbm"
-uci set wireless.$wifidevice.country=`nvram get wl0_country_code`
 uci set wireless.$wifidevice.channel=`nvram get wl0_channel`
 
 if test -n "`nvram get ff_bssid`";then
