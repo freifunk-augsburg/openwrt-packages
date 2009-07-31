@@ -79,10 +79,10 @@ EOF
 wifi_proto="`nvram get wifi_proto`"
 
 # find out what wifi-device to use
-export wifidevice=`uci get wireless.@wifi-iface[0].device`
-if [ "$wifidevice" = "wifi0" ];then 
-	export wifiifname="ath0"
-        else export wifiifname="wifi0"
+export has_ath=`uci get wireless.@wifi-iface[0].device`
+if [ "$has_ath" = "wifi0" ];then 
+	export has_ath="1"
+        else export has_ath="0"
 fi
 
 uci delete network.wifi0
@@ -90,7 +90,7 @@ uci delete network.wifi0
 if [ "$wifi_proto" = "dhcp" ];then
 uci batch << EOF
 set network.wifi0='interface'
-set network.wifi0.ifname="$wifiifname"
+set network.wifi0.ifname="wifi0"
 set network.wifi0.proto='dhcp'
 EOF
 fi
@@ -99,7 +99,7 @@ fi
 if [ "$wifi_proto" = "static" ] || [ "$wifi_proto" = "olsr" ];then
 uci batch << EOF
 set network.wifi0='interface'
-set network.wifi0.ifname='$wifiifname'
+set network.wifi0.ifname='wifi0'
 set network.wifi0.proto='static'
 set network.wifi0.ipaddr='`nvram get wifi_ipaddr`'
 set network.wifi0.netmask='`nvram get wifi_netmask`'
@@ -114,7 +114,7 @@ EOF
                 done
         fi
 	if [ "`nvram get wl0_mode`" = "sta" ] && [ ! "`nvram get wl0_infra`" = "1" ];then
-		olsrifs="$wifiifname"
+		olsrifs="wifi0"
 	fi
 fi
 
@@ -144,7 +144,7 @@ if [ "`nvram get wl0_antdiv`" == "1" ]; then
 	uci set wireless.$wifidevice.rxantenna='2'
 fi
 
-if [ "$wifiifname" = "ath0" ];then
+if [ "$has_ath" = "1" ];then
         countrycode=`nvram get ff_ath_param | tr ' ' '\n' |grep countrycode | sed -e 's/countrycode=//g'`
         outdoor=`nvram get ff_ath_param | tr ' ' '\n' |grep outdoor | sed -e 's/outdoor=//g'`
         test -n "$outdoor" && uci set wireless.$wifidevice.outdoor="$outdoor"
