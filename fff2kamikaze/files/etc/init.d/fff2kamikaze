@@ -185,10 +185,14 @@ set wireless.@wifi-iface[0].ssid='`nvram get wl0_ssid`'
 set wireless.@wifi-iface[0].mode="$wifi_mode"
 EOF
 
-txpower_qdbm=`nvram get wl0_txpwr`
-txpower_dbm=$(($txpower_qdbm/4))
-uci set wireless.$wifidevice.txpower="$txpower_dbm"
-uci set wireless.$wifidevice.channel=`nvram get wl0_channel`
+
+wl0_txpwr="`nvram get wl0_txpwr`"
+if test -n "$wl0_txpwr";then
+	txpower_qdbm="$wl0_txpwr"
+	txpower_dbm=$(($txpower_qdbm/4))
+	uci set wireless.$wifidevice.txpower="$txpower_dbm"
+	uci set wireless.$wifidevice.channel=`nvram get wl0_channel`
+fi
 
 if test -n "`nvram get ff_bssid`";then
 	uci set wireless.@wifi-iface[0].bssid="`nvram get ff_bssid`"
