@@ -38,9 +38,7 @@ endef
 
 define Package/fff2kamikaze/install
 	mkdir -p $(1)/etc/init.d
-	mkdir -p $(1)/etc/rc.d
 	$(CP) ./files/etc/init.d/fff2kamikaze $(1)/etc/init.d
-	$(CP) ./files/etc/rc.d/S98fff2kamikaze $(1)/etc/rc.d
 endef
 
 $(eval $(call BuildPackage,fff2kamikaze))
