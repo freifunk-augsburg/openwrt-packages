@@ -37,7 +37,7 @@ define Package/fff2kamikaze/description
 endef
 
 define Package/fff2kamikaze/install
-	mkdir -p $(1)/etc/init.d
+	$(INSTALL_DIR) $(1)/etc/init.d
 	$(CP) ./files/etc/init.d/fff2kamikaze $(1)/etc/init.d
 endef
 
