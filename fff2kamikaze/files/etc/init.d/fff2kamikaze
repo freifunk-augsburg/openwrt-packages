@@ -114,7 +114,7 @@ EOF
                 done
         fi
 	if [ "`nvram get wl0_mode`" = "sta" ] && [ ! "`nvram get wl0_infra`" = "1" ];then
-		olsrifs="$wifidevice"
+		olsrifs="$wifiifname"
 	fi
 fi
 
