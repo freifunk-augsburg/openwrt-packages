@@ -31,7 +31,7 @@ sed -i "/^root*/d" /etc/passwd
 if test -n "$passwd";then
 	echo "root:$passwd:0:0:root:/root:/bin/ash" > /etc/passwd.tmp
 	else 
-	echo "root:$1$8uRP2rfm$oD1f/1R8GNlOAMpVgFaVb.:0:0:root:/root:/bin/ash" > /etc/passwd.tmp
+	echo 'root:$1$kq6QGDmy$RuEbFh8UueMgkggCvfGBh.:0:0:root:/root:/bin/ash' > /etc/passwd.tmp
 fi
 cat /etc/passwd >> /etc/passwd.tmp
 mv /etc/passwd.tmp /etc/passwd
