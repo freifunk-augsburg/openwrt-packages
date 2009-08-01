@@ -89,32 +89,32 @@ uci delete network.wifi0
 
 if [ "$wifi_proto" = "dhcp" ];then
 uci batch << EOF
-set network.wifi0='interface'
-set network.wifi0.ifname="wifi0"
-set network.wifi0.proto='dhcp'
+set network.wlan='interface'
+set network.wlan.ifname="wifi0"
+set network.wlan.proto='dhcp'
 EOF
 fi
 
 
 if [ "$wifi_proto" = "static" ] || [ "$wifi_proto" = "olsr" ];then
 uci batch << EOF
-set network.wifi0='interface'
-set network.wifi0.ifname="$wifiifname"
-set network.wifi0.proto='static'
-set network.wifi0.ipaddr='`nvram get wifi_ipaddr`'
-set network.wifi0.netmask='`nvram get wifi_netmask`'
+set network.wlan='interface'
+set network.wlan.ifname="$wifiifname"
+set network.wlan.proto='static'
+set network.wlan.ipaddr='`nvram get wifi_ipaddr`'
+set network.wlan.netmask='`nvram get wifi_netmask`'
 EOF
 	if test -n "`nvram get wifi_gateway`";then
-		uci set network.wifi0.gateway=`nvram get wifi_gateway`
+		uci set network.wlan.gateway=`nvram get wifi_gateway`
 	fi
 # set wan_dns here too, in case wan is disabled
         if test -n "`nvram get wan_dns`";then
                 for dns in `nvram get wan_dns`;do
-                uci set network.wifi0.dns="$dns"
+                uci set network.wlan.dns="$dns"
                 done
         fi
 	if [ "`nvram get wl0_mode`" = "sta" ] && [ ! "`nvram get wl0_infra`" = "1" ];then
-		olsrifs="wifi0"
+		olsrifs="wlan"
 	fi
 fi
 
@@ -179,7 +179,7 @@ uci batch <<EOF
 delete wireless.@wifi-iface[0]
 add wireless wifi-iface
 set wireless.@wifi-iface[0]='wifi-iface'
-set wireless.@wifi-iface[0].network='wifi0'
+set wireless.@wifi-iface[0].network='wlan'
 set wireless.@wifi-iface[0].device='$wifidevice'
 set wireless.@wifi-iface[0].ssid='`nvram get wl0_ssid`'
 set wireless.@wifi-iface[0].mode="$wifi_mode"
@@ -275,7 +275,7 @@ for route in $static_routes; do
 		interface="lan"
 	fi
 	if [ "$interface" = "eth1" ];then
-		interface="wifi0"
+		interface="wlan"
 	else 
 		interface="wan";
 	fi
