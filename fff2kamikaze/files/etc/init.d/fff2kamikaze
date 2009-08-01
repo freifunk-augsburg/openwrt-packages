@@ -79,10 +79,10 @@ EOF
 wifi_proto="`nvram get wifi_proto`"
 
 # find out what wifi-device to use
-export has_ath=`uci get wireless.@wifi-iface[0].device`
-if [ "$has_ath" = "wifi0" ];then 
-	export has_ath="1"
-        else export has_ath="0"
+export wifidevice=`uci get wireless.@wifi-iface[0].device`
+if [ "$wifidevice" = "wifi0" ];then 
+	export wifiifname="ath0"
+        else export wifiifname="wifi0"
 fi
 
 uci delete network.wifi0
@@ -99,7 +99,7 @@ fi
 if [ "$wifi_proto" = "static" ] || [ "$wifi_proto" = "olsr" ];then
 uci batch << EOF
 set network.wifi0='interface'
-set network.wifi0.ifname='wifi0'
+set network.wifi0.ifname="$wifiifname"
 set network.wifi0.proto='static'
 set network.wifi0.ipaddr='`nvram get wifi_ipaddr`'
 set network.wifi0.netmask='`nvram get wifi_netmask`'
@@ -144,7 +144,7 @@ if [ "`nvram get wl0_antdiv`" == "1" ]; then
 	uci set wireless.$wifidevice.rxantenna='2'
 fi
 
-if [ "$has_ath" = "1" ];then
+if [ "$wifiifname" = "ath0" ];then
         countrycode=`nvram get ff_ath_param | tr ' ' '\n' |grep countrycode | sed -e 's/countrycode=//g'`
         outdoor=`nvram get ff_ath_param | tr ' ' '\n' |grep outdoor | sed -e 's/outdoor=//g'`
         test -n "$outdoor" && uci set wireless.$wifidevice.outdoor="$outdoor"
@@ -653,15 +653,6 @@ test -f /etc/init.d/wizard && /etc/init.d/wizard disable
 /etc/init.d/fff2kamikaze disable
 nvram unset fff2kamikaze;nvram commit
 
-#echo "### Migration finished. Will restart services now. ###"
-
-#services="network firewall olsrd dnsmasq"
-#for service in $services;do
-	/etc/init.d/$service restart
-#done
-
-#echo "Restarting dropbear"
-#/etc/init.d/dropbear restart &
 echo "### Migration finished. Will reboot now. ###"
 reboot
 }
