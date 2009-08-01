@@ -104,15 +104,16 @@ set network.wlan.proto='static'
 set network.wlan.ipaddr='`nvram get wifi_ipaddr`'
 set network.wlan.netmask='`nvram get wifi_netmask`'
 EOF
-	if test -n "`nvram get wifi_gateway`";then
-		uci set network.wlan.gateway=`nvram get wifi_gateway`
-	fi
-# set wan_dns here too, in case wan is disabled
-        if test -n "`nvram get wan_dns`";then
-                for dns in `nvram get wan_dns`;do
-                uci set network.wlan.dns="$dns"
-                done
-        fi
+	wifi_gateway="`nvram get wifi_gateway`"
+	test -n "$wifi_gateway" && uci set network.wlan.gateway="$wifi_gateway"
+
+	# set wan_dns here too, in case wan is disabled we have it here again
+	wan_dns="`nvram get wan_dns`"
+	test -n "$wan_dns" && for dns in $wan_dns;do uci set network.wlan.dns="$dns";done
+
+	ff_mtu="`nvram get ff_mtu`"
+	test -n "$ff_mtu" && uci set network.wlan.mtu="$ff_mtu"
+
 	if [ "`nvram get wl0_mode`" = "sta" ] && [ ! "`nvram get wl0_infra`" = "1" ];then
 		olsrifs="wlan"
 	fi
@@ -153,11 +154,15 @@ else
 fi
 test -n "$countrycode" && uci set wireless.$wifidevice.country="$countrycode"
 
-uci set wireless.$wifidevice.channel=`nvram get wl0_channel`
+wl0_channel="`nvram get wl0_distance`"
+test -n "$wl0_channel" && uci set wireless.$wifidevice.channel="$wl0_channel"
 
+wl0_distance="`nvram get wl0_distance`"
+test -n "$wl0_distance" && uci set wireless.$wifidevice.distance="$wl0_distance"
 
-if test -n "`nvram get wl0_distance`";then
-	uci set wireless.$wifidevice.distance="`nvram get wl0_distance`"
+if [ "$wifidevice" = "wl0" ];then
+	wl0_frameburst="`nvram get wl0_frameburst`"
+	if [ "$wl0_frameburst" = "on" ]; then wl0_frameburst="1"; uci set wireless.$wifidevice.frameburst="$wl0_frameburst"; fi
 fi
 
 ###wifi-interface
