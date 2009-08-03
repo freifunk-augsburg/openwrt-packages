@@ -4,10 +4,17 @@
 START=98
 boot() {
 set -x
-if [ ! "`nvram get fff2kamikaze`" = "1" ];then
-	echo "NOT starting FFF-NVRAM to UCI conversion. fff2kamikaze!=1"
-	exit
+
+ff_adm_note="`nvram get ff_adm_note`"
+fff2kamikaze="`echo "$ff_adm_note"|grep run_fff2kamikaze`"
+
+if [ -z "$fff2kamikaze" ];then
+        echo "NOT starting FFF-NVRAM to UCI conversion. run_fff2kamikaze is not set in ff_adm_note";exit
 fi
+
+# remove run_fff2kamikaze from ff_adm_note
+nvram set ff_adm_note="`echo "$ff_adm_note"|sed -e 's/run_fff2kamikaze//g'`"
+nvram commit
 
 echo "### Starting FFF-NVRAM to UCI conversion ###"
 
@@ -15,7 +22,7 @@ echo "### Starting FFF-NVRAM to UCI conversion ###"
 # See http://www.gnu.de/documents/gpl-2.0.en.html for more information.
 
 # author: soma
-VERSION="0.0.1 / 07262009"
+VERSION="0.0.1-3 / 08032009"
 
 echo "### Migration Script from FFF to LUCI-Kamikaze, Version: $VERSION ###"
 
@@ -43,9 +50,12 @@ mv /etc/passwd.tmp /etc/passwd
 # if there is no /etc/config/freifunk create it
 
 if [ ! -f /etc/config/freifunk ];then
-touch /etc/config/freifunk
-uci set freifunk.contact=public
+	touch /etc/config/freifunk
+	uci set freifunk.contact=public
 fi
+
+# convert newline to <br />
+ff_adm_note=`nvram get ff_adm_note|sed ':a;N;$!ba;s/\n/<br \/>/g'`
 
 uci batch <<EOF
 set freifunk.contact='public'
@@ -54,7 +64,7 @@ set freifunk.contact.name='`nvram get ff_adm_name`'
 set freifunk.contact.mail='`nvram get ff_adm_mail`'
 set freifunk.contact.phone='`nvram get ff_adm_tel`'
 set freifunk.contact.location='`nvram get ff_adm_loc`'
-set freifunk.contact.note='`nvram get ff_adm_note`'
+set freifunk.contact.note="$ff_adm_note"
 EOF
 
 #--------#
@@ -127,23 +137,13 @@ else
 	uci set wireless.$wifidevice.disabled='0'
 fi
 
-if [ "`nvram get wl0_antdiv`" == "-1" ]; then
-	uci set wireless.$wifidevice.diversity='1'
-	uci set wireless.$wifidevice.txantenna='0'
-	uci set wireless.$wifidevice.rxantenna='0'
-fi
+wl0_antdiv="`nvram get wl0_antdiv`"
 
-if [ "`nvram get wl0_antdiv`" == "0" ]; then
-	uci set wireless.$wifidevice.diversity='0'
-	uci set wireless.$wifidevice.txantenna='1'
-	uci set wireless.$wifidevice.rxantenna='1'
-fi
-
-if [ "`nvram get wl0_antdiv`" == "1" ]; then
-	uci set wireless.$wifidevice.diversity='0'
-	uci set wireless.$wifidevice.txantenna='2'
-	uci set wireless.$wifidevice.rxantenna='2'
-fi
+case $wl0_antdiv in
+  -1) uci set wireless.$wifidevice.diversity='1'; uci set wireless.$wifidevice.txantenna='0'; uci set wireless.$wifidevice.rxantenna='0' ;;
+   0) uci set wireless.$wifidevice.diversity='0'; uci set wireless.$wifidevice.txantenna='1'; uci set wireless.$wifidevice.rxantenna='1' ;;
+   1) uci set wireless.$wifidevice.diversity='0'; uci set wireless.$wifidevice.txantenna='2'; uci set wireless.$wifidevice.rxantenna='2' ;;
+esac
 
 if [ "$wifiifname" = "ath0" ];then
         countrycode=`nvram get ff_ath_param | tr ' ' '\n' |grep countrycode | sed -e 's/countrycode=//g'`
@@ -393,7 +393,6 @@ fi
 # OLSR #
 #------#
 
-
 nameserviceid="`uci show|grep nameservice|cut -d '.' -f 1,2`"
 
 if [ "`nvram get ff_nameservice`" = "0" ];then
@@ -435,12 +434,12 @@ for iface in $olsrifs;do
 		uci set olsrd.@Interface[-1].HnaInterval=$(( 5 * ff_olsrspeed )).0
 		uci set olsrd.@Interface[-1].HnaValidityTime=$(( 100 * ff_olsrspeed )).0
 	fi
-	ff_lqmult="`nvram get ff_lqmult`"
-	if test -n $ff_lqmult;then
-        ff_lqmult="`echo $ff_lqmult | tr ';' ' '`"
+	ff_lqmult=`nvram get ff_lqmult`
+	if test -n "$ff_lqmult";then
+        ff_lqmult=`echo $ff_lqmult | tr ';' ' '`
         for lqmult in $ff_lqmult;do
-		lqmult="`echo $ff_lqmult | tr ':' ' '`"
-		uci set olsrd.@Interface[-1].LinkQualityMult="$lqmult"
+		lqmult="`echo $lqmult | tr ':' ' '`"
+		uci add_list olsrd.@Interface[-1].LinkQualityMult="$lqmult"
 	done
 fi
 done
@@ -456,11 +455,14 @@ if test -n "$hna4";then
         uci set olsrd.@Hna4[-1].netmask="$netmask"
 	#get the appropriate zones
 	netmask_prefix="`/bin/ipcalc.sh $netaddr $netmask |grep PREFIX|cut -d '=' -f 2`"
+	
 	if [ "$netaddr"="0.0.0.0" ] && [ "netmask" = "0.0.0.0" ];then
 		destzone=`uci show network|grep gateway| grep -v route | cut -d '.' -f 2`
 	else	
-		ruleid=`uci show network |grep $netaddr | cut -d '.' -f2`
-		destzone=`uci get network.$ruleid.interface`
+		ruleid="`uci show network |grep $netaddr | cut -d '.' -f2`"
+		if [ -n "$ruleid" ];then
+			destzone=`uci get network.$ruleid.interface`
+		fi
 	fi
 	# if we can't find a zone for the route we assume wan
 	if [ -z "$destzone" ];then destzone=wan;fi
@@ -474,6 +476,7 @@ if test -n "$hna4";then
 	fi
 	done
 fi
+
 
 # currently not set OLSR Options:
 # dmz-umleitung: to be done
@@ -511,7 +514,7 @@ add firewall include
 set firewall.@include[-1].path=/etc/firewall.user
 add firewall zone
 set firewall.@zone[-1]=zone
-set firewall.@zone[-1].name=wan
+set firewall.@zone[-1].name=freifunk
 set firewall.@zone[-1].input=ACCEPT
 set firewall.@zone[-1].output=ACCEPT
 set firewall.@zone[-1].forward=ACCEPT
@@ -530,7 +533,7 @@ if [ "`nvram get fw_disable`" = "1" ];then
 else
 	$(firewall_common)
 
-## setup freifunk zone
+## setup  wlan zone
 uci batch <<EOF
 add firewall zone
 set firewall.@zone[-1]=zone
@@ -558,7 +561,7 @@ EOF
                  uci delete firewall.$lanzoneid
         fi
 
-## setup freifunk rules 
+## wlan zone rules 
 uci set firewall.@defaults[0].drop_invalid=0
 
 if [ ! "`nvram get lan_proto`" = "olsr" ];then
@@ -635,6 +638,18 @@ set firewall.@rule[-1].src=wan
 EOF
 	fi
 
+        if [ "`nvram get ff_wanhttps`" = "1" ];then
+uci batch <<EOF
+add firewall rule
+set firewall.@rule[-1]=rule
+set firewall.@rule[-1].dest_port=443
+set firewall.@rule[-1].proto=tcp
+set firewall.@rule[-1].target=ACCEPT
+set firewall.@rule[-1].src=wan
+EOF
+        fi
+
+
 	if [ "`nvram get ff_wanicmp`" = "1" ];then
 uci batch <<EOF
 add firewall rule
@@ -649,14 +664,6 @@ fi
 fi
 
 uci commit
-
-# If we have run succesfully, then disable the wizard if it exists and unset fff2kamikaze
-# also disable ourself
-
-test -f /etc/init.d/wizard && /etc/init.d/wizard disable
-
-/etc/init.d/fff2kamikaze disable
-nvram unset fff2kamikaze;nvram commit
 
 echo "### Migration finished. Will reboot now. ###"
 reboot
