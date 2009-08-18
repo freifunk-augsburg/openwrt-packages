@@ -5,7 +5,7 @@ export TITLE="Status: OLSR"
 . /www/cgi-bin-pre.sh
 
 WLDEV=$(sed -n 's/^ *\([^:]\+\):.*/\1/p' /proc/net/wireless)
-ff_httpinfo=$(nvram get ff_httpinfo)
+
 if [ "$REQUEST_METHOD" = "POST" ]; then
 read QUERY_STRING
 fi
@@ -259,25 +259,33 @@ cat<<EOF
 <TR>
 <TD COLSPAN="2">&nbsp;</TD>
 </TR>
+EOF
+for if in $WLDEV;do
+ifconfig=`ifconfig $if |grep "inet addr:" |sed -e 's/:/ /g'`
+cat << EOF
 <TR>
-<TD>IP
-Adresse:</TD>
-<TD>IP:&nbsp;$(ip -f inet addr show dev $WLDEV label $WLDEV |sed -ne'2{s/ \+inet \([0-9\.]\+\).*/\1/;p}'),
-Maske:&nbsp;$(test -n "$WLMASK" && ipcalc -m $WLMASK|cut -d'=' -f2),
-MAC:&nbsp;$(ip link show dev $WLDEV|sed -ne'2{s/.*ether \+\([^ ]\+\).*/\1/;p}')</TD>
+<TD>$if:</TD>
+<TD>IP: $(echo $ifconfig|cut -d ' ' -f 3), Maske: $(echo $ifconfig|cut -d ' ' -f 5), Broadcast: $(echo $ifconfig|cut -d ' ' -f 7) 
+<BR>MAC: $(ifconfig  $if |grep HWaddr|sed -e 's/ */ /g' |cut -d " " -f 6)  </TD>
 </TR>
 <TR>
+EOF
+done
+cat << EOF
 <TD>WLAN-Status:</TD>
 <TD>
 EOF
 
-if /rom/usr/sbin/wl -i $WLDEV status 2>&-;then
+for if in $WLDEV;do
+if /rom/usr/sbin/wl -i $if status 2>&-;then
 echo "<br>"
-/rom/usr/sbin/wl -i $WLDEV rate
-/rom/usr/sbin/wl -i $WLDEV mrate
+/rom/usr/sbin/wl -i $if rate
+/rom/usr/sbin/wl -i $if mrate
 else
-iwconfig $WLDEV 2>&-
+iwconfig $if 2>&-
+echo "<br>"
 fi
+done
 
 cat<<EOF
 </TD>
@@ -288,11 +296,13 @@ cat<<EOF
 </TR>
 <TR>
 <TD>Ger&auml;teinfo:</TD>
-<TD>Boardtype: $(nvram get boardtype), Boardnum: $(nvram get boardnum)</TD>
+<TD>Machine: $(cat /proc/cpuinfo |grep "machine" |cut -d ":" -f 2)
+<BR>Boardtype: $(cat /proc/cpuinfo |grep "system type" |cut -d ":" -f 2)
+<BR>CPU: $(cat /proc/cpuinfo |grep "cpu model" |cut -d ":" -f 2) ($(cat /proc/cpuinfo |grep "BogoMIPS" |cut -d ":" -f 2) BogoMIPS)</TD>
 </TR>
 <TR>
 <TD>Versionen:</TD>
-<TD>Firmware: $(cat /etc/freifunk-release)<BR>Olsrd: $(cat /etc/olsrd-release)</TD>
+<TD>Firmware: $(cat /etc/banner  |grep KAMIKAZE |sed -e 's/-//g')</TD>
 </TR>
 <TR>
 <TD>Default-Route:</TD>
@@ -387,11 +397,6 @@ cat<<EOF
 EOF
 
 echo -n '<PRE STYLE="display:none" ID="ifconfig">'
-echo "lan_ifnames=$(nvram get lan_ifnames)"
-echo "lan_ifname=$(nvram get lan_ifname)"
-echo "wl0_ifname=$(nvram get wl0_ifname)"
-echo "wifi_ifname=$(nvram get wifi_ifname)"
-echo "wan_ifname=$(nvram get wan_ifname)"
 echo
 brctl show 2>&1
 echo
@@ -402,7 +407,7 @@ cat<<EOF
 </TD>
 </TR>
 <TR>
-<TD>NVRAM-Konfiguration: </TD>
+<TD>UCI-Konfiguration: </TD>
 <TD><A HREF="#" ONCLICK="return fold('nvram')">Ein- / Ausblenden</A></TD>
 </TR>
 <TR>
@@ -410,23 +415,7 @@ cat<<EOF
 EOF
 
 echo -n '<PRE STYLE="display:none" ID="nvram">'
-nvram show 2>&-|sort|sed -ne'
-/^lan_/p
-/^wan_/p
-/^vlan/p
-/^wifi_/p
-/^static_route/p
-/^wl0_/{
-s/wpa\|wep\|key\|txpwr/&/
-t
-p
-}
-/^ff_/{
-s/adm\|key\|pw\|pass\|user\|txpwroverride/&/
-t
-p
-}
-'
+uci show
 echo '</PRE>'
 
 cat<<EOF
