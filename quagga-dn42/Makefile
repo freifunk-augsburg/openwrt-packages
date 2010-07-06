@@ -31,7 +31,7 @@ define Package/quagga-dn42/Default
   DEPENDS:=quagga-dn42
   TITLE:=The Quagga Software Routing Suite
   URL:=http://www.quagga.net
-  MAINTAINER:=Vasilis Tsiligiannis <b_tsiligiannis@silverton.gr>
+  MAINTAINER:=Vasilis Tsiligiannis <b_tsiligiannis@silverton.gr> - this patched version soma <freifunk at somakoma dot de>
 endef
 
 define Package/quagga-dn42
