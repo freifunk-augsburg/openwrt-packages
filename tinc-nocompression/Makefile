@@ -7,11 +7,11 @@
 
 include $(TOPDIR)/rules.mk
 
-PKG_NAME:=tinc-nocompression
+PKG_NAME:=tinc
 PKG_VERSION:=1.0.16
 PKG_RELEASE:=1
 
-PKG_SOURCE:=tinc-$(PKG_VERSION).tar.gz
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=http://www.tinc-vpn.org/packages \
 	http://ftp.yi.se/pub/tinc \
 	http://www.mirrors.wiretapped.net/security/network-security/tinc
