@@ -24,7 +24,7 @@ include $(INCLUDE_DIR)/package.mk
 define Package/tinc-nocompression
   SECTION:=net
   CATEGORY:=Network
-  DEPENDS:=+kmod-tun
+  DEPENDS:=+kmod-tun +libopenssl
   TITLE:=VPN tunneling daemon (without compression)
   URL:=http://www.tinc-vpn.org/
   SUBMENU:=VPN
