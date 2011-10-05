@@ -25,7 +25,7 @@ define Package/tinc-nolzo
   SECTION:=net
   CATEGORY:=Network
   DEPENDS:=+kmod-tun +libopenssl
-  TITLE:=VPN tunneling daemon (without compression)
+  TITLE:=VPN tunneling daemon (without lzo compression)
   URL:=http://www.tinc-vpn.org/
   SUBMENU:=VPN
 endef
