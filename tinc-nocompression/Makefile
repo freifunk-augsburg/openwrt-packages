@@ -40,8 +40,8 @@ TARGET_CFLAGS += -std=gnu99
 
 CONFIGURE_ARGS += \
 	--with-kernel="$(LINUX_DIR)" \
-	--without-lzo \
-	--without-zlib
+	--disable-zlib \
+	--disable-lzo
 
 define Package/tinc-nocompression/install
 	$(INSTALL_DIR) $(1)/usr/sbin
