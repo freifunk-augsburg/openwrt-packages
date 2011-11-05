@@ -30,6 +30,28 @@ define Package/tinc-nolzo
   SUBMENU:=VPN
 endef
 
+define Package/tinc/conffiles
+/etc/tinc
+endef
+
+define Package/tinc/postinst
+#!/bin/sh
+if [ -z "$${IPKG_INSTROOT}" ]; then
+	echo "Enabling rc.d symlink for tinc"
+	/etc/init.d/tinc enable
+fi
+exit 0
+endef
+
+define Package/tinc/prerm
+#!/bin/sh
+if [ -z "$${IPKG_INSTROOT}" ]; then
+	echo "Removing rc.d symlink for tinc"
+	/etc/init.d/tinc disable
+fi
+exit 0
+endef
+
 define Package/tinc-nolzo/description
   tinc is a Virtual Private Network (VPN) daemon that uses tunnelling and
   encryption to create a secure private network between hosts on the Internet.
@@ -46,6 +68,10 @@ CONFIGURE_ARGS += \
 define Package/tinc-nolzo/install
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/sbin/tincd $(1)/usr/sbin/
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_BIN) ./files/tinc.init $(1)/etc/init.d/tinc
+	$(INSTALL_DIR) $(1)/etc/tinc
+	$(INSTALL_DATA) ./files/etc/tinc/nets.boot $(1)/etc/tinc/nets.boot
 endef
 
 $(eval $(call BuildPackage,tinc-nolzo))

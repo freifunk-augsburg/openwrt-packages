@@ -1,0 +1,60 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2006 OpenWrt.org
+START=47
+
+DAEMON="/usr/sbin/tincd"
+NAME="tinc"
+DESC="tinc daemons"
+TCONF="/etc/tinc"
+NETSFILE="$TCONF/nets.boot"
+NETS=""
+
+find_nets () {
+	if [ ! -f $NETSFILE ] ; then
+		echo "**tinc: file with list of VPNs to start ($NETSFILE) not found!"
+		exit 0
+	fi
+	NETS="`grep -v '^#' $NETSFILE`"
+}
+
+start () {
+	find_nets
+	echo -n "Starting $DESC:"
+	for n in $NETS ; do
+		echo -n " $n"
+		$DAEMON -n $n $EXTRA
+	done
+	echo "."
+}
+
+stop() {
+	find_nets
+	echo -n "Stopping $DESC:"
+	for n in $NETS ; do
+		echo -n " $n"
+		$DAEMON -n $n $EXTRA -k
+	done
+	echo "."
+}
+
+restart () {
+	find_nets
+	echo -n "Restarting $DESC:"
+	for n in $NETS ; do
+		echo -n " $n"
+		$DAEMON -n $n $EXTRA -k
+		sleep 1
+		$DAEMON -n $n $EXTRA
+	done
+	echo "."
+}
+
+reload () {
+	find_nets
+	echo -n "Reloading $DESC configuration:"
+	for n in $NETS ; do
+		echo -n " $n"
+		$DAEMON -n $n $EXTRA -kHUP
+	done
+	echo "."
+}
