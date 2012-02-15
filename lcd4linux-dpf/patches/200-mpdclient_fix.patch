@@ -1,0 +1,13 @@
+Index: lcd4linux-r1142/plugins.m4
+===================================================================
+--- lcd4linux-r1142.orig/plugins.m4	2012-01-13 16:00:57.910133337 +0100
++++ lcd4linux-r1142/plugins.m4	2012-01-13 16:01:11.713863662 +0100
+@@ -410,7 +410,7 @@
+ 
+ # MPD
+ if test "$PLUGIN_MPD" = "yes"; then
+-   AC_CHECK_LIB(libmpd, [mpd_newConnection], [has_mpd_header="true"], [has_mpd_header="false"])
++   AC_CHECK_LIB(libmpd, [mpd_newConnection], [has_mpd_header="true"], [has_mpd_header="true"])
+    if test "$has_mpd_header" = "true"; then
+       PLUGINS="$PLUGINS plugin_mpd.o"
+       PLUGINLIBS="$PLUGINLIBS `pkg-config libmpd --libs`"
