@@ -21,7 +21,7 @@ index fe20a25..d48abc5 100644
 +static void broadcast_packet_direct(const node_t *from, vpn_packet_t *packet) {
 +	// Don't forward broadcast packets
 +	if(from != myself)
-+		send_packet(myself, packet);
++		return send_packet(myself, packet);
 +
 +	for(avl_node_t *node = node_udp_tree->head; node; node = node->next) {
 +		node_t *n = node->data;
