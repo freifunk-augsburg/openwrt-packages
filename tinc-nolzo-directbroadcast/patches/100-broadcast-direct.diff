@@ -1,0 +1,44 @@
+diff --git a/src/net_packet.c b/src/net_packet.c
+index fe20a25..d48abc5 100644
+--- a/src/net_packet.c
++++ b/src/net_packet.c
+@@ -544,9 +544,9 @@ void send_packet(const node_t *n, vpn_packet_t *packet) {
+ 		send_udppacket(via, packet);
+ }
+ 
+-/* Broadcast a packet using the minimum spanning tree */
++/* Broadcast a packet  */
+ 
+-void broadcast_packet(const node_t *from, vpn_packet_t *packet) {
++static void broadcast_packet_mst(const node_t *from, vpn_packet_t *packet) {
+ 	avl_node_t *node;
+ 	connection_t *c;
+ 
+@@ -570,6 +570,27 @@ void broadcast_packet(const node_t *from, vpn_packet_t *packet) {
+ 	}
+ }
+ 
++static void broadcast_packet_direct(const node_t *from, vpn_packet_t *packet) {
++	// Don't forward broadcast packets
++	if(from != myself)
++		return send_packet(myself, packet);
++
++	for(avl_node_t *node = node_udp_tree->head; node; node = node->next) {
++		node_t *n = node->data;
++
++		// Send the packet to all directly reachable nodes
++		if(n->status.reachable && ((n->via == myself && n->nexthop == n) || n->via == n))
++			send_packet(n, packet);
++	}
++}
++
++void broadcast_packet(const node_t *from, vpn_packet_t *packet) {
++	if(directonly)
++		broadcast_packet_direct(from, packet);
++	else
++		broadcast_packet_mst(from, packet);
++}
++
+ static node_t *try_harder(const sockaddr_t *from, const vpn_packet_t *pkt) {
+ 	avl_node_t *node;
+ 	edge_t *e;
