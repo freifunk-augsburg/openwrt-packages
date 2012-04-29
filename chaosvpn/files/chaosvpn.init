@@ -5,8 +5,32 @@ START=99
 
 SERVICE_DAEMONIZE=1
 
+create_config()
+{
+	config_load chaosvpn
+	local peerid
+	local my_vpn_ip
+	local my_vpn_ip6
+	local my_ip
+	local exclude
+	config_get peerid basics peerid
+	config_get my_vpn_ip basics my_vpn_ip
+	config_get my_vpn_ip6 basics my_vpn_ip6
+	config_get my_ip basics my_ip
+	config_get exclude basics exclude
+	[ -n "$peerid" ] && sed  -i "s/\$my_peerid.*/\$my_peerid              = \"$peerid\";/" /etc/tinc/chaosvpn.conf
+	[ -n "$my_vpn_ip" ] && sed  -i "s/\$my_vpn_ip\t.*/\$my_vpn_ip              = \"$my_vpn_ip\";/" /etc/tinc/chaosvpn.conf
+	[ -n "$my_vpn_ip6" ] && sed  -i "s/\$my_vpn_ip6.*/\$my_vpn_ip6              = \"$my_vpn_ip6\";/" /etc/tinc/chaosvpn.conf
+	[ -n "$my_ip" ] && sed  -i "s/\$my_ip.*/\$my_ip              = \"$my_ip\";/" /etc/tinc/chaosvpn.conf
+	if [ -n "$exclude" ]; then
+		exclude="$(echo $exclude |sed -e 's/\(\w*\)/"\1"/g' -e 's/ /,/g')"
+		sed  -i "s/\@exclude.*/\@exclude              = \($exclude\);/" /etc/tinc/chaosvpn.conf
+	fi
+}
+
 start()
 {
+	create_config
 	/usr/sbin/chaosvpn_config.sh
 	[ $? = 0 ] || {
 		logger "not starting chaosvpn, check your config"
