@@ -37,7 +37,7 @@ start()
 		logger -t chaosvpn "not starting chaosvpn, check your config"
 		exit 1
 	}
-	service_start /usr/sbin/chaosvpn -f -c /etc/tinc/chaosvpn.conf
+	service_start /usr/sbin/chaosvpn -d -c /etc/tinc/chaosvpn.conf
 }
 
 stop()
