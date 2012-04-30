@@ -34,7 +34,7 @@ MAKE_FLAGS += \
 	COPT="$(TARGET_CFLAGS) $(TARGET_CPPFLAGS) $(TARGET_LDFLAGS)"
 
 define Package/chaosvpn/install
-	$(INSTALL_DIR) $(1)/etc/tinc/chaos/ $(1)/usr/sbin/ $(1)/etc/init.d/ $(1)/etc/hotplug.d/iface/
+	$(INSTALL_DIR) $(1)/etc/tinc/chaos/ $(1)/usr/sbin/ $(1)/etc/init.d/ $(1)/etc/hotplug.d/iface/ $(1)/etc/config/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/chaosvpn $(1)/usr/sbin/
 	$(INSTALL_DATA) ./files/chaosvpn.config $(1)/etc/config/chaosvpn
 	sed -e 's/"\/sbin\/ip /"\/usr\/sbin\/ip /' <$(PKG_BUILD_DIR)/chaosvpn.conf >$(1)/etc/tinc/chaosvpn.conf
