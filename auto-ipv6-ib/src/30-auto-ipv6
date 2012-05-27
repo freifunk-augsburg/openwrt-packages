@@ -95,8 +95,9 @@ olsrd_find_plugin(){
 find_public_ip(){
 	local ret
 	#FIXME
-	#ret="$(wget -q -O - http://checkip.dyndns.org/index.html | awk {'print $6'} | sed 's/<.*$//')"
-	ret="$(wget -q -O - http://204.13.248.70/index.html | awk {'print $6'} | sed 's/<.*$//')"
+	ret="$(wget -q -O - http://checkip.dyndns.org/index.html | awk {'print $6'} | sed 's/<.*$//')"
+	# the ip was unreachable, use dns-name above instead
+	#ret="$(wget -q -O - http://204.13.248.70/index.html | awk {'print $6'} | sed 's/<.*$//')"
 	echo "$ret"
 }
 local IP4_LOCAL_IF="$IP4_LOCAL"
