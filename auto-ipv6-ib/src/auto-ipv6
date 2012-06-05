@@ -49,7 +49,7 @@ net_find_iface() {
 
 #we need to check all gateways in hna table and see which one is the default gw by looking at the etx for each gw
 
-local IPV6_GATEWAYS="$(wget -q -O - http://[::1]:2006/hna | grep '::/0' | cut -d "$(printf "\t")" -f 2)"
+local IPV6_GATEWAYS="$(wget -q -O - http://[::1]:2006/hna | grep '2000::/3' | cut -d "$(printf "\t")" -f 2)"
 
 local DEFAULT_ETX="1000000" # Use 1000 * 1000 here, because later we remove the decimal point in the etx from routes info
 for g in $IPV6_GATEWAYS; do
