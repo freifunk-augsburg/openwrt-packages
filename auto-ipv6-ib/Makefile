@@ -13,14 +13,12 @@ include $(INCLUDE_DIR)/package.mk
 define Package/auto-ipv6-ib
   SECTION:=ipv6
   CATEGORY:=IPv6
-  TITLE:=Auto IPv6 Tunnel to 192.88.99.1
+  TITLE:=Autoconfigures ipv6 for mesh interfaces
   URL:=http://trac.augsburg.freifunk.net
-  DEPENDS+= \
-   +kmod-sit
 endef
 
 define Package/auto-ipv6-ib/description
-  Auto IPv6 Tunnel to 192.88.99.1 with olsrd and radvd integration
+  Autoconfigures ipv6 for mesh interfaces.
 endef
 
 define Build/Prepare
@@ -34,10 +32,6 @@ define Build/Compile
 endef
 
 define Package/auto-ipv6-ib/install
-	$(INSTALL_DIR) $(1)/etc/hotplug.d/iface
-	$(INSTALL_BIN) ./src/30-auto-ipv6 $(1)/etc/hotplug.d/iface/30-auto-ipv6
-	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) ./src/autoipv6.init $(1)/etc/init.d/autoipv6
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) ./src/auto-ipv6 $(1)/usr/bin
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
