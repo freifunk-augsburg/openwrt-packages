@@ -1,15 +1,28 @@
 #!/bin/sh
+# Do not run this script more than once at a time
+local pid="$(pidof auto-ipv6)"
+local count=0
+for p in pid; do
+	count=$(expr $count + 1)
+done
+[ $count -gt 1 ] && echo "$(pidof auto-ipv6)" && echo "already running" && exit 1
+DEBUG=1
+dns_servers="[::]"
+local dnsmasq_conf="/etc/dnsmasq.conf"
 
-#Enable/Disable auto-ipv6
-[ "$(uci get autoipv6.olsr_node.enable)" == 1 ] || exit 0
+. /lib/functions.sh
+config_load autoipv6
+local enabled
+config_get enabled "olsr_node" enabled
+[ "$enabled" == 1 ] || exit 0
+local mode
+config_get mode "olsr_node" mode
 
-. /etc/functions.sh
-
+#set -x
 olsrd_clear_hna6() {
 	uci delete 'olsrd.@Hna6[-1]'
 	return 0
 }
-
 olsrd_find_hna6() {
 	local cfg="$1"
 	local netaddr="$2"
@@ -39,18 +52,29 @@ olsrd_search_hna6() {
 
 net_find_iface() {
         local cfg="$1"
-        case $cfg in
-        	loopback) return 0 ;;
-        	gvpn) return 0 ;;
-        esac
         interfaces="$interfaces ""$cfg"
         return 0
 }
 
+ipv6uniq_from_v4() {
+	local ipv4addr="$(uci -q -p/var/state get network.$1.ipaddr)"
+	local o3="$(echo $ipv4addr | cut -d '.' -f 3)"
+	local o4="$(echo $ipv4addr | cut -d '.' -f 4)"
+	local ret=$(printf '%02x' $o3)$(printf '%02x' $o4)
+	echo $ret
+}
+
 #we need to check all gateways in hna table and see which one is the default gw by looking at the etx for each gw
 
-local IPV6_GATEWAYS="$(wget -q -O - http://[::1]:2006/hna | grep '2000::/3' | cut -d "$(printf "\t")" -f 2)"
+local hnainfo
+hnainfo="$(wget -q http://[::1]:2006/hna -O -)"
+ret=$?
+if [ $ret -ne 0 ]; then
+	logger -s -t auto-ipv6 "Could not connect to the txtinfo plugin, exiting."
+	txtinfo=0
+fi
 
+local IPV6_GATEWAYS="$(wget -q http://[::1]:2006/hna -O - | grep '2000::/3' | cut -d "$(printf "\t")" -f 2)"
 local DEFAULT_ETX="1000000" # Use 1000 * 1000 here, because later we remove the decimal point in the etx from routes info
 for g in $IPV6_GATEWAYS; do
         local GW_ETX="$(wget -q -O - http://[::1]:2006/routes | grep ^${g} | awk '{ print $4 }'| sed 's/\.//')"
@@ -64,14 +88,14 @@ done
 local colons="$(echo $DEFAULT_GW | grep -o ":" | wc -l)"
 local tofill=$(( 8 - $colons ))
 local filler=""
-
 for i in `seq 1 $tofill`; do
 	filler="0000:$filler"
 done
-
-IP6_SUFFIX=$(echo $DEFAULT_GW | sed "s/::/:$filler/" | cut -d ':' -f 1-4 )
-
-[ -z "$IP6_SUFFIX" ] && logger -t auto-ipv6 "No ipv6 gateway found. Either there is no IPv6 Gateway reachable or i could not connect to the txtinfo plugin. Exiting." && exit 1
+if [ "$mode" = "dhcpv6" ]; then
+	IP6_SUFFIX=$(echo $DEFAULT_GW | sed "s/::/:$filler/" | cut -d ':' -f 1-4 )
+else
+	IP6_SUFFIX=$(echo $DEFAULT_GW | sed "s/::/:$filler/" | cut -d ':' -f 1-3 )
+fi
 for i in $IP6_SUFFIX ; do
 	case $i in
 		fdca*) ;;
@@ -79,93 +103,173 @@ for i in $IP6_SUFFIX ; do
 	esac
 done
 
-config_load network
-local interfaces=""
-config_foreach net_find_iface interface
-
 local restart_dnsmasq=0
+local dnsmasq_options=""
 local restart_olsrd=0
 local hna6s=""
+local ra=0
+
+local interfaces=""
+config_foreach net_find_iface interface
 
 for i in $(echo $interfaces) ; do
 	[ "$(uci get network.$i.proto)" == "static" ] || continue
 	DEV="$(uci -q -p/var/state get network.$i.ifname)"
 	[ -z "$DEV" ]  && {
-		logger -t auto-ipv6 "uci Device Not Found IP6_SUFFIX $IP6_SUFFIX interfaces $i DEV $DEV check your uci config"
+		logger -s -t auto-ipv6 "uci Device Not Found IP6_SUFFIX $IP6_SUFFIX interfaces $i DEV $DEV check your uci config"
 		continue
 	}
 	grep -q "$DEV" /proc/net/dev || {
-		logger -t auto-ipv6 "proc Device Not Found IP6_SUFFIX $IP6_SUFFIX interfaces $i DEV $DEV check your uci config"
+		logger -s -t auto-ipv6 "proc Device Not Found IP6_SUFFIX $IP6_SUFFIX interfaces $i DEV $DEV check your uci config"
 		continue
 	}
+	ra="$(uci -q get autoipv6.$i.ra)"
+
+        # Create ula alias for interface if it doesn't exist yet
+        local ula="$(uci -q get network.${i}ula.ip6addr)"
+	local community="$(uci -q get freifunk.community.name)"
+	local ip6_net="$(uci -q get profile_${community}.profile.ipv6_prefix)"
+	local ulanew
+	local ula_net
+	local ula_uniq="$(ipv6uniq_from_v4 $i)"
+	if [ -n "$ip6_net" ]; then
+		ula_net=$(echo "$ip6_net" | sed 's/::.*//')
+		ulanew="$ula_net:$ula_uniq::1/64"
+		ula_net=$(echo $ulanew | sed 's/::.*//')
+	else
+		ulanew="fdca:ffee:ffff:$ula_uniq::1/64"
+		ula_net=$(echo $ulanew | sed 's/::.*//')
+	fi
+	ula_ip6addr=$(echo $ulanew | cut -d "/" -f 0)
+	echo ula_ip6addr $ula_ip6addr
+
+        if [ -z "$ula" ]; then
+		uci batch <<- EOF
+			set network.${i}ula='alias'
+			set network.${i}ula.proto='static'
+			set network.${i}ula.interface="$i"
+			set network.${i}ula.ip6addr="$ulanew"
+			commit network
+		EOF
+		ula="$ulanew"
+		dns_servers="$dns_servers,[$ula_ip6addr]"
+		echo $dns_servers
+		ip -6 a a "$ula" dev $DEV
+		if [ "$ra" -eq 1 ]; then
+			dnsmasq_options="$dnsmasq_options dhcp-range=$DEV,$ula_net::,ra-only,64,3600s"
+			restart_dnsmasq=1
+		fi
+		# add olsrd hna6 entry for ula
+		uci add olsrd Hna6
+		uci set olsrd.@Hna6[-1].prefix="64"
+		uci set olsrd.@Hna6[-1].netaddr="${ula_net}::"
+		uci commit olsrd
+		restart_olsrd=1
+
+		
+		[ $DEBUG -eq 1 ] && logger -s -t auto-ipv6 "Added ULA-alias ip $ulanew for ${i}." 
+	fi
+
+	if [ -z "$IP6_SUFFIX" ]; then
+		[ $DEBUG -eq 1 ] && logger -s -t auto-ipv6 "No ipv6 gateway found."
+		break
+	fi
+
 	IP6_UCI=$(uci get network.$i.ip6addr)
 	if [ $(echo $IP6_UCI | grep -i fdca) ] ; then
 		uci set network.$i.ip6addr_fdca="$IP6_UCI"
 	fi
-#	IP6_OLDSUFFIX="$(echo $IP6_UCI | cut -d ':' -f -3)"
-	IP6_OLDSUFFIX="$(echo $IP6_UCI | cut -d ':' -f -4)"
+
+	if [ "$mode" = "dhcpv6" ]; then
+		IP6_OLDSUFFIX="$(echo $IP6_UCI | cut -d ':' -f -4)"
+	else
+		IP6_OLDSUFFIX="$(echo $IP6_UCI | cut -d ':' -f -3)"
+	fi
 	IP6_OLDUNIQ="$(echo $IP6_UCI | cut -d ':' -f 4)"
 
-	[ "$IP6_SUFFIX" == "$IP6_OLDSUFFIX" ] && echo "no change detected" && exit
-#	[ -z $IP6_OLDSUFFIX ] || {
-#		[ "$IP6_SUFFIX" == "$IP6_OLDSUFFIX" ] && ifconfig "$DEV" | grep -q -e "$IP6_SUFFIX"".*1\/112" && {
-#			hna6s="$IP6_OLDSUFFIX"":""$IP6_OLDUNIQ""::"" $hna6s"
-#			continue
-#		}
-#	}
-	#uci set "network.$i.ip6oldSUFFIX=$IP6_SUFFIX"
-	# Uniq 4Bybte from urandom
-	# IP6_UNIQ="$(head -n 1 /dev/urandom 2>/dev/null | md5sum | cut -b 1-4)"
+	echo $IP6_SUFFIX $IP6_OLDSUFFIX
+	if [ "$IP6_SUFFIX" == "$IP6_OLDSUFFIX" ]; then
+		[ $DEBUG -eq 1 ] && logger -s -t auto-ipv6 "no change detected"
+		break
+	fi
 
-	# Uniq 16 bit from last two octets of ipv4 address of this interface
-	#local ipv4addr=$(uci -q -p/var/state get network.$i.ipaddr)
-	#local o3=$(echo $ipv4addr | cut -d '.' -f 3)
-	#local o4=$(echo $ipv4addr | cut -d '.' -f 4)
-	#IP6_UNIQ="$(printf '%02x' $o3)$(printf '%02x' $o4)"
+	local IP6_UNIQ
+	if [ "$mode" = "dhcpv6" ]; then
+		# Uniq parts from mac / works with /112 netmasks
+		local mac="$(ifconfig $DEV |grep HWaddr | awk '{ print $5 '})"
+		IP6_UNIQ="$(echo $mac | awk -F: '{ print $1$2":"$3$4":"$5$6 }')"
+		echo "IP6_UNIQ $IP6_UNIQ"
+		IP6_ADDRESS="${IP6_SUFFIX}:${IP6_UNIQ}:1/112"
+	fi
 
-	# Uniq parts from mac / works with /112 netmasks
-	local mac="$(ifconfig $DEV |grep HWaddr | awk '{ print $5 '})"
-	local IP6_UNIQ="$(echo $mac | awk -F: '{ print $1$2":"$3$4":"$5$6 }')"
-	echo "IP6_UNIQ $IP6_UNIQ"
+	if [ "$mode" = "random" ] || [ "$mode" = "fromv4" ]; then
+		[ -z $IP6_OLDSUFFIX ] || {
+			[ "$IP6_SUFFIX" == "$IP6_OLDSUFFIX" ] && ifconfig "$DEV" | grep -q -e "$IP6_SUFFIX"".*1\/64" && {
+			hna6s="$IP6_OLDSUFFIX"":""$IP6_OLDUNIQ""::"" $hna6s"
+			continue
+			}
+		}
 
-#	case $IP6_UNIQ in 
-#		000*) IP6_UNIQ=$(echo $IP6_UNIQ | cut -b 4) ;; 
-#		00*) IP6_UNIQ=$(echo $IP6_UNIQ | cut -b 3-4) ;; 
-#		0*) IP6_UNIQ=$(echo $IP6_UNIQ | cut -b 2-4) ;;
-#	esac
+		uci set "network.$i.ip6oldSUFFIX=$IP6_SUFFIX"
+                if [ "$mode" = "random" ]; then
+			# Uniq 4Bybte from urandom
+			IP6_UNIQ="$(head -n 1 /dev/urandom 2>/dev/null | md5sum | cut -b 1-4)"
+		fi
+                if [ "$mode" = "fromv4" ]; then
+			# Uniq 16 bit from last two octets of ipv4 address of this interface
+			IP6_UNIQ="$(ipv6uniq_from_v4 $i)"
+			echo $IP6_UNIQ
+		fi
 
-	#uci set "network.$i.ip6olduniq=$IP6_UNIQ"
-	#uci commit network
+		case $IP6_UNIQ in 
+			000*) IP6_UNIQ=$(echo $IP6_UNIQ | cut -b 4) ;; 
+			00*) IP6_UNIQ=$(echo $IP6_UNIQ | cut -b 3-4) ;; 
+			0*) IP6_UNIQ=$(echo $IP6_UNIQ | cut -b 2-4) ;;
+		esac
 
-#	[ -z $IP6_OLDSUFFIX ] || {
-#		ifconfig "$DEV" del "$IP6_OLDSUFFIX"":""$IP6_OLDUNIQ""::1/64"
-#	}
+		uci set "network.$i.ip6olduniq=$IP6_UNIQ"
+		uci commit network
+
+		[ -z $IP6_OLDSUFFIX ] || {
+			ifconfig "$DEV" del "$IP6_OLDSUFFIX"":""$IP6_OLDUNIQ""::1/64"
+		}
+		IP6_ADDRESS="${IP6_SUFFIX}:${IP6_UNIQ}::1/64"
+		dns_servers="$dns_servers,[$ula_ip6addr]"
+	fi
 
 	for j in $(ifconfig $DEV | grep Scope:Global | cut -d ' ' -f 13 ) ; do
 		ifconfig "$DEV" del "$j"
 	done
 
+	sysctl -w "net.ipv6.conf.$DEV.forwarding=1"
 	sysctl -w "net.ipv6.conf.$DEV.autoconf=0"
-	sysctl -w "net.ipv6.conf.$DEV.accept_redirects=0"
 	sysctl -w "net.ipv6.conf.$DEV.accept_ra=0"
 	sysctl -w "net.ipv6.conf.$DEV.accept_ra_defrtr=0"
 	sysctl -w "net.ipv6.conf.$DEV.accept_ra_pinfo=0"
-	sysctl -w "net.ipv6.conf.$DEV.accept_source_route=0"
 
-#	IP6_ADDRESS="${IP6_SUFFIX}:${IP6_UNIQ}::${COUNTER}:1/112"
-	IP6_ADDRESS="${IP6_SUFFIX}:${IP6_UNIQ}:1/112"
+	# store interface specific dnsmasq options
+	if [ "$ra" = 1 ]; then
+		dnsmasq_options="$dnsmasq_options dhcp-range=$DEV,$IP6_SUFFIX:$IP6_UNIQ::,ra-only,64,3600s"
+		dnsmasq_options="$dnsmasq_options dhcp-range=$DEV,$IP6_SUFFIX:$IP6_UNIQ::100,$IP6_SUFFIX:$IP6_UNIQ::1000,64,300"
+		if [ -n "$IP6_OLDSUFFIX" ]; then
+			dnsmasq_options="$dnsmasq_options dhcp-range=$DEV,$IP6_OLDSUFFIX:$IP6_OLDUNIQ::,ra-only,64,deprecated"
+			dnsmasq_options="$dnsmasq_options dhcp-range=$DEV,$IP6_OLDSUFFIX:$IP6_OLDUNIQ::100,$IP6_OLDSUFFIX:$IP6_UNIQ::1000,64,deprecated"
+		fi
+		dnsmasq_options="$dnsmasq_options dhcp-range=$DEV,$ula_net::,ra-only,64,3600s"
+		[ "$DEBUG" = 1 ] && logger -s -t auto-ipv6 "$dnsmasq_options"
+	fi
 	echo "IP_ADDRESS for interface $DEV is $IP6_ADDRESS"
+	# Add new main address
 	ifconfig "$DEV" add $IP6_ADDRESS
+	# also add old address so we can invalidate it with dnsmasq-ra's
+	ip -6 a a "$IP6_OLDSUFFIX"":""$IP6_OLDUNIQ""::1/64" preferred_lft 0 dev $DEV
+	ip -6 a a "$ula" dev $DEV
 	uci -P /var/state set network.$i.ip6addr="$IP6_ADDRESS"
 	uci set network.$i.ip6addr="$IP6_ADDRESS"
 	uci commit network
 	hna6s="$IP6_SUFFIX"":""$IP6_UNIQ""::"" $hna6s"
-	# Write /etc/dnsmasq.conf with our suffixes
-	sed -i "/${IP6_OLDSUFFIX}:${IP6_UNIQ}/d" /etc/dnsmasq.conf
-#	echo "dhcp-range=$DEV,$IP6_SUFFIX:$IP6_UNIQ::$COUNTER:100,$IP6_SUFFIX:$IP6_UNIQ::$COUNTER:100,112,300" >> /etc/dnsmasq.conf
-	echo "dhcp-range=$DEV,$IP6_SUFFIX:$IP6_UNIQ:100,$IP6_SUFFIX:$IP6_UNIQ:1000,112,300" >> /etc/dnsmasq.conf
+        hna6s="${ula_net}:: $hna6s"
 	restart_dnsmasq=1
-#	COUNTER="$(($COUNTER + 1))"
 done
 
 if [ "6and4" == "$(uci get olsrd.@olsrd[0].IpVersion)" ] ; then
@@ -176,7 +280,11 @@ if [ "6and4" == "$(uci get olsrd.@olsrd[0].IpVersion)" ] ; then
 		config_foreach olsrd_find_hna6 Hna6 $i
 		if [ "$neta" == "" ] ; then
 			uci add olsrd Hna6
-			uci set "olsrd.@Hna6[-1].prefix=112"
+			if [ "$mode" = "dhcpv6" ]; then
+				uci set "olsrd.@Hna6[-1].prefix=112"
+			else
+				uci set "olsrd.@Hna6[-1].prefix=64"
+			fi
 			uci set "olsrd.@Hna6[-1].netaddr=""$i"
 			uci commit olsrd
 			restart_olsrd=1
@@ -197,16 +305,29 @@ fi
 config_clear
 
 
-if [ $restart_dnsmasq -eq 1 ] ; then
+if [ $restart_dnsmasq -eq 1 ]; then
 	if ! [ -z "$(pidof dnsmasq)" ] ; then
-		logger -t auto-ipv6 "Restarting dnsmasq..."
-		/etc/init.d/dnsmasq restart
+		# Write dnsmasq.conf. This is a hack until these things are configurable via uci
+		# But first remove previous entries
+		sed -i '/^###START auto-ipv6###/,/^###END auto-ipv6###/d' $dnsmasq_conf
+		domain="$(uci -q get dhcp.dnsmasq.domain)"
+		domain=${domain:="olsr"}
+		echo "###START auto-ipv6###" >> $dnsmasq_conf
+		echo "enable-ra" >> $dnsmasq_conf
+		echo "dhcp-option=option6:dns-server,$dns_servers" >> $dnsmasq_conf
+		echo "dhcp-option=option6:domain-search,$domain" >> $dnsmasq_conf
+		for o in $dnsmasq_options; do
+			echo $o >> $dnsmasq_conf
+		done
+		echo "###END auto-ipv6###" >> $dnsmasq_conf
 	fi
+	logger -s -t auto-ipv6 "Restarting dnsmasq..."
+	/etc/init.d/dnsmasq restart
 fi
 
 if [ $restart_olsrd -eq 1 ] ; then
 	if ! [ -z "$(pidof olsrd)" ] ; then
-		logger -t auto-ipv6 "Restarting olsrd..."
+		logger -s -t auto-ipv6 "Restarting olsrd..."
 		/etc/init.d/olsrd restart
 	fi
 fi
