@@ -180,7 +180,7 @@ for i in $(echo $interfaces) ; do
 	fi
 
 	# If not gateway is known nothing more to do here
-	[ "$has_gw" -eq 0 ] && return
+	[ "$has_gw" -eq 0 ] && continue
 
 	# else check if it has changed and setup new global ipv6 addresses
 	# if needed
