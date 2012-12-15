@@ -56,4 +56,4 @@ define Package/tinc-nolzo/conffiles
 /etc/config/tinc
 endef
 
-$(eval $(call BuildPackage,tinc))
+$(eval $(call BuildPackage,tinc-nolzo))
