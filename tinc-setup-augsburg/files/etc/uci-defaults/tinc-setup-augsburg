@@ -15,7 +15,7 @@ uci batch <<-EOF
 	commit firewall
 	set olsrd.ffa=Interface
 	set olsrd.ffa.interface=ffa
-	set olsrd.ffa.LinkQualityMult=default 0.1
+	set olsrd.ffa.LinkQualityMult='default 0.10'
 	set olsrd.ffa.HelloInterval=30.0
 	set olsrd.ffa.HelloValidityTime=180.0
 	set olsrd.ffa.TcInterval=8.0
