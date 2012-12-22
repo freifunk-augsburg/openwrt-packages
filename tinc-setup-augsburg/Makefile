@@ -34,7 +34,7 @@ define Build/Compile
 endef
 
 define Package/tinc-setup-augsburg/install
-	$(INSTALL_DIR) $(1)/etc/tinc
+	$(CP) ./files/* $(1)/
 endef
 
 $(eval $(call BuildPackage,tinc-setup-augsburg))
