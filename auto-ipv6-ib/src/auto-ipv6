@@ -149,9 +149,9 @@ for i in $(echo $interfaces) ; do
 
 		if [ -n "$ula_net" ]; then
 			uci batch <<- EOF
-				set network.${i}ula='alias'
+				set network.${i}ula='interface'
 				set network.${i}ula.proto='static'
-				set network.${i}ula.interface="$i"
+				set network.${i}ula.ifname="@${i}"
 				set network.${i}ula.ip6addr="$ulanew"
 				commit network
 			EOF
