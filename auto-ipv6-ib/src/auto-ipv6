@@ -122,10 +122,22 @@ fi
 config_foreach net_find_iface interface
 
 for i in $(echo $interfaces) ; do
-	[ "$(uci -q get network.$i.proto)" == "static" ] || continue
-	DEV="$(get_device $i)"
-	[ -z "$DEV" ] && continue
-	
+	# if we use a special dhcp interface/alias then use that to configure the ipv6 addresses
+	if [ "$(uci -q get network.${i}dhcp.proto)" = "static" ]; then
+		dhcpiface="${i}dhcp"
+	else
+		dhcpiface="$i"
+	fi
+
+	# check if the dhcp interface is a VAP
+	uci -q get network.${i}dhcp.ifname &> /dev/null && has_dhcp_vap="0"
+
+	[ "$(uci -q get network.$dhcpiface.proto)" == "static" ] || continue
+	DEV="$(get_device $dhcpiface)"
+	DEVMESH="$(get_device $i)"
+
+	[ -z "$DEV" -o -z "$DEVMESH" ] && continue
+
 	ra="$(uci -q get autoipv6.$i.ra)" && ra=${ra:-0}
 
         # Create ula alias for interface if it doesn't exist yet
@@ -151,21 +163,21 @@ for i in $(echo $interfaces) ; do
 			uci batch <<- EOF
 				set network.${i}ula='interface'
 				set network.${i}ula.proto='static'
-				set network.${i}ula.ifname="@${i}"
+				set network.${i}ula.ifname="@${dhcpiface}"
 				set network.${i}ula.ip6addr="$ulanew"
 				commit network
 			EOF
 			ula="$ulanew"
 			dns_servers="$dns_servers,[$ula_ip6addr]"
-			ip -6 a a "$ula" dev $DEV
+			ip -6 a a "$ula" dev $DEVMESH
 			if [ "$ra" -eq 1 ]; then
-				dnsmasq_options="$dnsmasq_options dhcp-range=$DEV,$ula_net::,ra-only,64,3600s"
+				dnsmasq_options="$dnsmasq_options dhcp-range=$DEVMESH,$ula_net::,ra-only,64,3600s"
 				restart_dnsmasq=1
 			fi
 			# Add proc entries
-			set_proc $DEV
+			set_proc $DEVMESH
 			# add olsrd hna6 entry for ula
-			olsrd_add_hna $i autoipv6${i}ula ${ula_net}:: 64
+			olsrd_add_hna $dhcpiface autoipv6${i}ula ${ula_net}:: 64
 			restart_olsrd=1
 			[ $DEBUG -eq 1 ] && logger -s -t auto-ipv6 "Added ULA-alias ip $ulanew for ${i}." 
 		else
@@ -173,19 +185,19 @@ for i in $(echo $interfaces) ; do
 		fi
 	fi
 	# Add ULA network to dnsmasq config
-	dns_servers="$dns_servers,[$ula_ip6addr]"
-	ula_net=$(echo "$ula" | sed 's/::.*//')
-	if [ -n "$ula_net" ] && [ "$ra" -eq 1 ]; then
-		dnsmasq_options="$dnsmasq_options dhcp-range=$DEV,$ula_net::,ra-only,64,3600s"
-	fi
+	# dns_servers="$dns_servers,[$ula_ip6addr]"
+	# ula_net=$(echo "$ula" | sed 's/::.*//')
+	# if [ -n "$ula_net" ] && [ "$ra" -eq 1 ]; then
+	#	dnsmasq_options="$dnsmasq_options dhcp-range=$DEV,$ula_net::,ra-only,64,3600s"
+	# fi
 
-	# If not gateway is known nothing more to do here
+	# If gateway is not known nothing more to do here
 	[ "$has_gw" -eq 0 ] && continue
 
 	# else check if it has changed and setup new global ipv6 addresses
 	# if needed
 
-	local IP6_UCI=$(uci get network.$i.ip6addr)
+	local IP6_UCI=$(uci get network.$dhcpiface.ip6addr)
 	local IP6_OLDSUFFIX="$(echo $IP6_UCI | cut -d ':' -f -3)"
 	local IP6_OLDUNIQ="$(echo $IP6_UCI | cut -d ':' -f 4)"
 
@@ -195,8 +207,8 @@ for i in $(echo $interfaces) ; do
 	else
 		if [ -n "$IP6_OLDSUFFIX" ]; then
 			hna6s="$IP6_OLDSUFFIX"":""$IP6_OLDUNIQ""::"" $hna6s"
-			olsrd_add_hna $i autoipv6${i}old ${IP6_OLDSUFFIX}:${IP6_OLDUNIQ}:: 64
-			uci set "network.$i.ip6oldSUFFIX=$IP6_SUFFIX"
+			olsrd_add_hna $dhcpiface autoipv6${dhcpiface}old ${IP6_OLDSUFFIX}:${IP6_OLDUNIQ}:: 64
+			uci set "network.$dhcpiface.ip6oldSUFFIX=$IP6_SUFFIX"
 			dnsmasq_options="$dnsmasq_options dhcp-range=$DEV,$IP6_OLDSUFFIX:$IP6_OLDUNIQ::,ra-only,64,deprecated"
 			dnsmasq_options="$dnsmasq_options dhcp-range=$DEV,$IP6_OLDSUFFIX:$IP6_OLDUNIQ::100,$IP6_OLDSUFFIX:$IP6_OLDUNIQ::1000,64,deprecated"
 		fi
@@ -220,16 +232,16 @@ for i in $(echo $interfaces) ; do
 	esac
 
 	if [ "$gw_changed" -eq 1 ]; then
-		[ "$DEBUG" -eq 1 ] && logger -s -t auto-ipv6 "IPv6 gateway has changed, setup new address for $i"
+		[ "$DEBUG" -eq 1 ] && logger -s -t auto-ipv6 "IPv6 gateway has changed, setup new address for $dhcpiface"
 
-		uci set "network.$i.ip6olduniq=$IP6_UNIQ"
+		uci set "network.$dhcpiface.ip6olduniq=$IP6_UNIQ"
 		uci commit network
 		[ -z $IP6_OLDSUFFIX ] || {
 			ifconfig "$DEV" del "$IP6_OLDSUFFIX"":""$IP6_OLDUNIQ""::1/64"
 		}
 		IP6_ADDRESS="${IP6_SUFFIX}:${IP6_UNIQ}::1/64"
 
-		olsrd_add_hna $i autoipv6${i} ${IP6_SUFFIX}:${IP6_UNIQ}:: 64
+		olsrd_add_hna $dhcpiface autoipv6${dhcpiface} ${IP6_SUFFIX}:${IP6_UNIQ}:: 64
 		restart_olsrd=1
 
 		for j in $(ifconfig $DEV | grep Scope:Global | cut -d ' ' -f 13 ) ; do
@@ -243,9 +255,13 @@ for i in $(echo $interfaces) ; do
 		ifconfig "$DEV" add $IP6_ADDRESS
 		# also add old address so we can invalidate it with dnsmasq-ra's
 		ip -6 a a "$IP6_OLDSUFFIX"":""$IP6_OLDUNIQ""::1/64" preferred_lft 0 dev $DEV
-		ip -6 a a "$ula" dev $DEV
-		uci -P /var/state set network.$i.ip6addr="$IP6_ADDRESS"
-		uci set network.$i.ip6addr="$IP6_ADDRESS"
+		if [ "$has_dhcp_vap" = "0" ]; then
+			ip -6 a a "$ula" dev $DEV
+		else
+			ip -6 a a "$ula" dev $DEVMESH
+		fi
+		uci -P /var/state set network.$dhcpiface.ip6addr="$IP6_ADDRESS"
+		uci set network.$dhcpiface.ip6addr="$IP6_ADDRESS"
 		uci commit network
 		restart_dnsmasq=1
 		# store interface specific dnsmasq options
