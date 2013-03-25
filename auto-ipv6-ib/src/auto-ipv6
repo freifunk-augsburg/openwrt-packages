@@ -100,6 +100,17 @@ set_proc() {
 	sysctl -nw "net.ipv6.conf.$1.accept_ra_pinfo=0" > /dev/null
 }
 
+add_localnets() {
+	# A route needs to be installed in localnets table if available (policy routing stuff)
+	ip -6 ru s | grep localnets || return
+	cmd="ip -6 r a "$1" dev "$2" table localnets"
+	$cmd 2>/dev/null
+	if [ "$?" = 0 ]; then
+		logger -s -t auto-ipv6 "Add route: $cmd"
+	fi
+}
+
+
 
 local DEFAULT_GW="$(get_olsr_defgw)"
 local filler="$(expand_v6)"
@@ -122,7 +133,7 @@ fi
 config_foreach net_find_iface interface
 
 for i in $(echo $interfaces) ; do
-	# if we use a special dhcp interface/alias then use that to configure the ipv6 addresses
+	# if we use a special dhcp interface/alias then use that to configure the public ipv6 address
 	if [ "$(uci -q get network.${i}dhcp.proto)" = "static" ]; then
 		dhcpiface="${i}dhcp"
 	else
@@ -163,13 +174,14 @@ for i in $(echo $interfaces) ; do
 			uci batch <<- EOF
 				set network.${i}ula='interface'
 				set network.${i}ula.proto='static'
-				set network.${i}ula.ifname="@${dhcpiface}"
+				set network.${i}ula.ifname="@${i}"
 				set network.${i}ula.ip6addr="$ulanew"
 				commit network
 			EOF
 			ula="$ulanew"
 			dns_servers="$dns_servers,[$ula_ip6addr]"
 			ip -6 a a "$ula" dev $DEVMESH
+			add_localnets "$ulanew" "$DEVMESH"
 			if [ "$ra" -eq 1 ]; then
 				dnsmasq_options="$dnsmasq_options dhcp-range=$DEVMESH,$ula_net::,ra-only,64,3600s"
 				restart_dnsmasq=1
@@ -236,10 +248,14 @@ for i in $(echo $interfaces) ; do
 
 		uci set "network.$dhcpiface.ip6olduniq=$IP6_UNIQ"
 		uci commit network
-		[ -z $IP6_OLDSUFFIX ] || {
-			ifconfig "$DEV" del "$IP6_OLDSUFFIX"":""$IP6_OLDUNIQ""::1/64"
-		}
+
 		IP6_ADDRESS="${IP6_SUFFIX}:${IP6_UNIQ}::1/64"
+		IP6_ADDRESS_OLD="${IP6_SUFFIX}:${IP6_UNIQ}::1/64"
+		IP6_ADDRESS2="${IP6_SUFFIX}:${IP6_UNIQ}::2/128"
+
+		[ -z $IP6_OLDSUFFIX ] || {
+			ifconfig "$DEV" del "$IP6_ADDRESS_OLD"
+		}
 
 		olsrd_add_hna $dhcpiface autoipv6${dhcpiface} ${IP6_SUFFIX}:${IP6_UNIQ}:: 64
 		restart_olsrd=1
@@ -248,20 +264,33 @@ for i in $(echo $interfaces) ; do
 			ifconfig "$DEV" del "$j"
 		done
 
+		for j in $(ifconfig $DEVMESH | grep Scope:Global | cut -d ' ' -f 13 ) ; do
+			ifconfig "$DEV" del "$j"
+		done
+
 		set_proc $DEV
 
-		echo "IP_ADDRESS for interface $DEV is $IP6_ADDRESS"
+		logger -s -t auto-ipv6 "IP_ADDRESS for interface $DEV is $IP6_ADDRESS"
 		# Add new main address
 		ifconfig "$DEV" add $IP6_ADDRESS
+		add_localnets "$IP6_ADDRESS" "$DEV"
+
 		# also add old address so we can invalidate it with dnsmasq-ra's
-		ip -6 a a "$IP6_OLDSUFFIX"":""$IP6_OLDUNIQ""::1/64" preferred_lft 0 dev $DEV
+		ip -6 a a "$IP6_ADDRESS_OLD" preferred_lft 0 dev $DEV
+
 		if [ "$has_dhcp_vap" = "0" ]; then
 			ip -6 a a "$ula" dev $DEV
+			add_localnets "$ula" "$DEV"
 		else
-			ip -6 a a "$ula" dev $DEVMESH
+			ip -6 a a "$ula" dev $DEV
+			ip -6 a a "$IP6_ADDRESS2" dev $DEVMESH
+			add_localnets "$ula" "$DEV"
+			add_localnets "$IP6_ADDRESS2" "$DEVMESH"
 		fi
 		uci -P /var/state set network.$dhcpiface.ip6addr="$IP6_ADDRESS"
 		uci set network.$dhcpiface.ip6addr="$IP6_ADDRESS"
+		uci -P /var/state set network.$i.ip6addr="$IP6_ADDRESS2"
+		uci set network.$i.ip6addr="$IP6_ADDRESS2"
 		uci commit network
 		restart_dnsmasq=1
 		# store interface specific dnsmasq options
