@@ -118,6 +118,7 @@ local IP6_SUFFIX=$(echo $DEFAULT_GW | sed "s/::/:$filler/" | cut -d ':' -f 1-3 )
 local restart_dnsmasq=0
 local dnsmasq_options=""
 local restart_olsrd=0
+local restart_splash=0
 local ra=0
 local interfaces=""
 local community="$(uci -q get freifunk.community.name)" && community=${community:-Freifunk}
@@ -191,6 +192,7 @@ for i in $(echo $interfaces) ; do
 			# add olsrd hna6 entry for ula
 			olsrd_add_hna $dhcpiface autoipv6${i}ula ${ula_net}:: 64
 			restart_olsrd=1
+			restart_splash=1
 			[ $DEBUG -eq 1 ] && logger -s -t auto-ipv6 "Added ULA-alias ip $ulanew for ${i}." 
 		else
 			logger -s -t auto-ipv6 "Could not create ULA address for $i"
@@ -259,6 +261,7 @@ for i in $(echo $interfaces) ; do
 
 		olsrd_add_hna $dhcpiface autoipv6${dhcpiface} ${IP6_SUFFIX}:${IP6_UNIQ}:: 64
 		restart_olsrd=1
+		restart_splash=1
 
 		for j in $(ifconfig $DEV | grep Scope:Global | cut -d ' ' -f 13 ) ; do
 			ifconfig "$DEV" del "$j"
@@ -335,4 +338,12 @@ if [ $restart_olsrd -eq 1 ] ; then
 		/etc/init.d/olsrd restart
 	fi
 fi
+
+if [ $restart_splash -eq 1 ] ; then
+	/etc/init.d/luci_splash enabled && {
+		logger -s -t auto-ipv6 "Restarting luci-splash..."
+		/etc/init.d/luci_splash restart
+	}
+fi
+
 
