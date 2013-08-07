@@ -15,7 +15,7 @@ uci batch <<-EOF
 	commit firewall
 	set olsrd.ffa=Interface
 	set olsrd.ffa.interface=ffa
-	set olsrd.ffa.LinkQualityMult='default 0.10'
+	set olsrd.ffa.LinkQualityMult='default 0.20'
 	set olsrd.ffa.HelloInterval=30.0
 	set olsrd.ffa.HelloValidityTime=180.0
 	set olsrd.ffa.TcInterval=8.0
@@ -26,7 +26,6 @@ uci batch <<-EOF
 	set olsrd.ffa.HnaValidityTime=300.0
 	commit olsrd
 	set tinc.ffa=tinc-net
-	set tinc.ffa.enabled=0
 	set tinc.ffa.generate_keys=1
 	set tinc.ffa.key_size=2048
 	set tinc.ffa.Mode=switch
@@ -35,7 +34,11 @@ uci batch <<-EOF
 	set tinc.ffa.IndirectData=1
 	set tinc.ffa.Broadcast=direct
 	commit tinc
+	set ucitrack.tinc=tinc
+	set ucitrack.tinc.exec="/etc/init.d/tinc restart"
+	commit ucitrack
 EOF
+/sbin/fw3 reload
 
 exit 0
 

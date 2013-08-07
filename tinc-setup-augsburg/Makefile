@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=tinc-setup-augsburg
 PKG_VERSION:=0.0.1
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 
@@ -34,7 +34,20 @@ define Build/Compile
 endef
 
 define Package/tinc-setup-augsburg/install
+	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller/freifunk
+	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/model/cbi/freifunk
 	$(CP) ./files/* $(1)/
+	$(CP) ./luasrc/controller/freifunk/* $(1)/usr/lib/lua/luci/controller/freifunk/
+	$(CP) ./luasrc/model/cbi/freifunk/* $(1)/usr/lib/lua/luci/model/cbi/freifunk/
+	
 endef
+
+define Package/tinc-setup-augsburg/postinst
+        [ -n "$${IPKG_INSTROOT}" ] || {
+        ( . /etc/uci-defaults/tinc-setup-augsburg ) && rm -f /etc/uci-defaults/tinc-setup-augsburg
+            exit 0
+        }
+endef
+
 
 $(eval $(call BuildPackage,tinc-setup-augsburg))
