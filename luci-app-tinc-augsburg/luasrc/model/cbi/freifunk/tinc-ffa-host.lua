@@ -82,7 +82,7 @@ port:depends("connectto", "1")
 local pubkey = "/etc/tinc/ffa/hosts/" .. arg[1]
 
 
-local key= i:option(TextValue, "Pubkey", "Öffentlicher Schlüssel", "Der öffentliche Schlüssel dieses Knotens. Dieser wird dir in der Regel vom Betreiber dieses Knotens zugeschickt und kann per Copy&Paste hier eingefügt werden.")
+local key= i:option(TextValue, "Pubkey", "Öffentlicher Schlüssel", "Der öffentliche Schlüssel dieses Knotens. Dieser wird dir in der Regel vom Betreiber dieses Knotens zugeschickt und kann per Copy&Paste hier eingefügt werden Tip: Address und Port Variablen werden automatisch extrahiert und oben richtig eingefügt.")
 key.rows = 10
 function key.cfgvalue()
 	return fs.readfile(pubkey) or ""
@@ -90,7 +90,24 @@ end
 
 function key.write(self, section, value)
 	if value and value ~= "" then
-		fs.writefile(pubkey, value:gsub("\r\n", "\n"))
+		-- extract port and address and write them into the tinc config file
+		local addr = value:match("Address%s*=%s*[\'\"]*([%w\.-]*)[\'\"]*")
+		local port = value:match("Port%s*=%s*[\'\"]*([%d]*)[\'\"]*")
+		if addr then
+			m.uci:set("tinc", arg[1], "Address", addr)
+			value = value:gsub("Address%s*=%s*[\'\"]*[%w\.-]*[\'\"]*%s", "")
+		end
+		if port then
+			m.uci:set("tinc", arg[1], "Port", port)
+			value = value:gsub("Port%s*=%s*[\'\"]*([%d]*)[\'\"]*%s", "")
+		end
+
+		if string.sub(value,-1) ~= "\n" then
+			-- add \n at the end if missing
+			fs.writefile(pubkey, value:gsub("\r\n", "\n") .. "\n")
+		else
+			fs.writefile(pubkey, value:gsub("\r\n", "\n"))
+		end
 	else
 		fs.unlink(pubkey)
 	end
