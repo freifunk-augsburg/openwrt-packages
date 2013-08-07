@@ -67,6 +67,7 @@ function addr.write(self, section, value)
 		m.uci:set('tinc', myname, 'Address', value)
 	end
 end
+addr.datatype = "or(hostname, ipaddr)"
 
 local port = c:option(Value, "Port", "Port", "Extern erreichbarer Port des Tinc-Knotens. In der Regel verwenden wir hier 4223. Dieser Port wird benötigt, enn andere Tinc-Knoten Verbindungen zu diesem Knoten initiieren sollen.")
 function port.cfgvalue()
@@ -77,6 +78,7 @@ function port.write(self, section, value)
 		m.uci:set('tinc', myname, 'Port', value)
 	end
 end
+port.datatype = "range(0,65535)"
 
 local ip = c:option(Value, "ipaddr", "IP-Adresse des Tunnels", "Die interne IP des Tunnels im Mesh. Bitte eine Adresse aus 10.11.63.x verwenden und auf der Webseite registrieren.")
 ip.required = True
@@ -91,6 +93,7 @@ function ip.write(self, section, value)
 		m:chain('network')
 	end
 end
+ip.datatype = "ip4addr"
 
 local key = c:option(DummyValue, "Pubkey", "Öffentlicher Schlüssel", "Der Public Key dieses Knotens. Dieser muss in allen Knoten mit denen dieser Knoten eine Verbindung haben soll eingerichtet werden. Dazu diesen Schlüssel zum Betreiber des anderen Knotens schicken.")
 

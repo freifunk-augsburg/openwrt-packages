@@ -34,9 +34,6 @@ enabled = i:option(Flag, "enabled", translate("Enable"),
 	"Diesen Peer aktivieren.")
 enabled.rmempty = false
 
-address = i:option(Value, "Address", "Adresse",
-	"Übers Internet erreichbare IP-Addresse oder DNS-Hostname.")
---address.datatype = [[ or("hostname", "ip4addr", "ip6addr") ]]
 
 connectto = i:option(Flag, "connectto", "Ausgehende Verbindung",
 	"Verbindung zu diesem Knoten aufbauen.")
@@ -70,10 +67,16 @@ function connectto.write(self, section, value)
 	end
 end
 
+address = i:option(Value, "Address", "Adresse",
+	"Übers Internet erreichbare IP-Addresse oder DNS-Hostname.")
+address.datatype = "or(hostname, ipaddr)"
+address:depends("connectto", "1")
+
 port = i:option(Value, "Port", "Port")
 port.rmrmpty = true
 port.required = true
 port.datatype = "range(0,65535)"
+port:depends("connectto", "1")
 
 
 local pubkey = "/etc/tinc/ffa/hosts/" .. arg[1]
