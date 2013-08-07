@@ -1,8 +1,7 @@
 --[[
 LuCI - Lua Configuration Interface
 
-Copyright 2008 Steven Barth <steven@midlink.org>
-Copyright 2011 Manuel Munz <freifunk at somakoma dot de>
+Copyright 2013 Manuel Munz <freifunk at somakoma dot de>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,14 +22,14 @@ m:chain('tinc')
 
 function m.on_parse()
 	if not m.uci:get('tinc', 'ffa') then
-                m.uci:section("tinc", "tinc-net", "ffa")
-        end
+		m.uci:section("tinc", "tinc-net", "ffa")
+	end
 	if myname then
 		if not m.uci:get('tinc', myname) then
-	                m.uci:section("tinc", "tinc-host", myname)
+			m.uci:section("tinc", "tinc-host", myname)
 			m.uci:set("tinc", myname, "net", "ffa")
 			m.uci:set("tinc", myname, "enabled", "1")
-	        end
+		end
 	end
 end
 
@@ -90,8 +89,6 @@ function ip.write(self, section, value)
 		m.uci:set('network', 'ffa', 'ipaddr', value)
 		m.uci:commit('network')
 		m:chain('network')
-
-	--	os.execute('ifup ffa')
 	end
 end
 
@@ -113,7 +110,7 @@ if myname then
 				out = out .. 'Port = ' .. port .. '\n'
 			end
 
-		        out = out .. fs.readfile(pubkey)
+		out = out .. fs.readfile(pubkey)
 			out = out .. "</pre>"
 			return out
 		else
@@ -155,12 +152,12 @@ enabled.rmempty = false
 
 local connectto = hosts:option(DummyValue, "connectto", "Ausgehende Verbindungen")
 function connectto.cfgvalue(self,section)
-        local list = m.uci:get_list("tinc", "ffa", "ConnectTo") or {}
-        if utl.contains(list, section) then
-                return "1"
-        else
-                return "0"
-        end
+	local list = m.uci:get_list("tinc", "ffa", "ConnectTo") or {}
+	if utl.contains(list, section) then
+		return "1"
+	else
+		return "0"
+	end
 end
 
 local address hosts:option(DummyValue, "Address", "Addresse")
