@@ -38,7 +38,10 @@ uci batch <<-EOF
 	set ucitrack.tinc.exec="/etc/init.d/tinc restart"
 	commit ucitrack
 EOF
+/etc/init.d/tinc enable
 /sbin/fw3 reload
 
 exit 0
+
+
 
