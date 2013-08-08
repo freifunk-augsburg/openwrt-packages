@@ -18,7 +18,6 @@ local myname = uci:get("tinc", "ffa", "Name")
 
 
 m = Map("tinc", "Tinc Wizard für Freifunk Augsburg", "Dieser Wizard hilft dir dabei, Tinc fürs Augsburger Intracityvpn einzurichten." )
-m:chain('tinc')
 
 function m.on_parse()
 	if not m.uci:get('tinc', 'ffa') then
@@ -90,7 +89,6 @@ function ip.write(self, section, value)
 	if value then
 		m.uci:set('network', 'ffa', 'ipaddr', value)
 		m.uci:commit('network')
-		m:chain('network')
 	end
 end
 ip.datatype = "ip4addr"
