@@ -10,7 +10,7 @@ START=42
 SERVICE_USE_PID=1
 
 BIN=/usr/sbin/tincd
-CLIENT=/usr/bin/tinc
+CLIENT=/usr/sbin/tinc
 EXTRA_COMMANDS="up down"
 
 LIST_SEP="
