@@ -43,7 +43,7 @@ function getData()
         hosts['status'] = {}
         hosts['hosts'] = {}
 
-	local pid = utl.exec('/usr/bin/tinc -n ffa pid')
+	local pid = utl.exec('/usr/sbin/tinc -n ffa pid')
 	if pid  and pid ~= "" then
 		hosts['status']['up'] = "1"
 	else
@@ -62,7 +62,7 @@ function getData()
         end)	
         for host,_ in pairs(hosts['hosts']) do
 		myname = uci:get("tinc", "ffa", "Name")
-                local hostdata = utl.split(utl.exec('/usr/bin/tinc -n ffa info ' .. host), "\n")
+                local hostdata = utl.split(utl.exec('/usr/sbin/tinc -n ffa info ' .. host), "\n")
                 hosts['hosts'][host]['reachable'] = "0"
                 hosts['hosts'][host]['validkey'] = "0"
                 hosts['hosts'][host]['udp_confirmed'] = "0"
