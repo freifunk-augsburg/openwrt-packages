@@ -38,7 +38,7 @@ end
 
 
 c = m:section(NamedSection, "ffa", "tinc-net", "")
-c.addremove = true
+c.addremove = false
 
 local enabled = c:option(Flag, "enabled", translate("Enabled"))
 enabled.default = "1"
@@ -68,7 +68,7 @@ function addr.write(self, section, value)
 end
 addr.datatype = "or(hostname, ipaddr)"
 
-local port = c:option(Value, "Port", "Port", "Extern erreichbarer Port des Tinc-Knotens. In der Regel verwenden wir hier 4223. Dieser Port wird benötigt, enn andere Tinc-Knoten Verbindungen zu diesem Knoten initiieren sollen.")
+local port = c:option(Value, "Port", "Port", "Extern erreichbarer Port des Tinc-Knotens. In der Regel verwenden wir hier 4223. Dieser Port wird benötigt, wenn andere Tinc-Knoten Verbindungen zu diesem Knoten initiieren sollen.")
 function port.cfgvalue()
 	return m.uci:get('tinc', myname, 'Port')
 end
