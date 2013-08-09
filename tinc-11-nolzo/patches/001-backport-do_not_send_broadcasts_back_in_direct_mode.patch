@@ -1,0 +1,12 @@
+--- a/src/net_packet.c.orig	2013-08-09 18:50:40.000000000 +0200
++++ b/src/net_packet.c	2013-08-09 18:51:18.000000000 +0200
+@@ -902,7 +902,7 @@
+ 				break;
+ 
+ 			for splay_each(node_t, n, node_tree)
+-				if(n->status.reachable && ((n->via == myself && n->nexthop == n) || n->via == n))
++					if(n->status.reachable && n != myself && ((n->via == myself && n->nexthop == n) || n->via == n))
+ 					send_packet(n, packet);
+ 			break;
+ 
+
