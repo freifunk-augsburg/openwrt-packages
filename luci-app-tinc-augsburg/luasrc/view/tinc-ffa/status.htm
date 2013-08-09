@@ -1,0 +1,153 @@
+<%#
+LuCI - Lua Configuration Interface
+Copyright 2013 Manuel Munz <freifunk at somakoma dot de>
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+-%>
+
+<%
+
+local i = 1
+
+if luci.http.formvalue("status") == "1" then
+	local rv = {}
+	for name, data in pairs(hosts) do
+		rv[#rv+1] = {
+			name = name,
+			ip = data.ip,
+			port = data.port,
+			uptime = data.uptime,
+			protocol = data.protocol,
+			reachable = data.reachable,
+			udp = data.udp_confirmed,
+			validkey = data.validkey
+			}
+	end
+	luci.http.prepare_content("application/json")
+	luci.http.write_json(rv)
+	return
+end
+%>
+
+<%+header%>
+
+<script type="text/javascript" src="<%=resource%>/cbi.js"></script>
+<script type="text/javascript">//<![CDATA[
+
+	XHR.poll(10 , '<%=REQUEST_URI%>', { status: 1 }, 
+		function(x, info)
+		{
+		var nt = document.getElementById('tinc_table');
+			if (nt)
+			{
+				var s = '';
+				for (var idx = 0; idx < info.length; idx++)
+				{
+					var hosts = info[idx];
+
+					if(hosts.reachable == "1"){
+						hosts.reachable = '<img src="<%=resource%>/cbi/save.gif" alt="reachable" title="reachable" />'
+					}
+					if(hosts.reachable == "0"){
+						hosts.reachable = '<img src="<%=resource%>/cbi/reset.gif" alt="unreachable" title="unreachable" />'
+					}
+					if(hosts.validkey == "1"){
+						hosts.validkey = '<img src="<%=resource%>/cbi/save.gif" alt="valid key" title="valid key" />'
+					}
+					if(hosts.validkey == "0") {
+						hosts.validkey = '<img src="<%=resource%>/cbi/reset.gif" alt="invalid key" title="invalid key"/>'
+					}
+					if(hosts.udp == "1"){
+						hosts.udp = '<img src="<%=resource%>/cbi/save.gif" alt="UDP" title="UDP" />'
+					}
+					if(hosts.udp == "0") {
+						hosts.udp = '<img src="<%=resource%>/cbi/reset.gif" alt="kein UDP" title="kein UDP"/>'
+					}
+					s += String.format(
+						'<tr class="cbi-section-table-row cbi-rowstyle-'+(1 + (idx % 2))+'">' +
+						'<td class="cbi-section-table-titles">%s</td>' +
+						'<td class="cbi-section-table-titles">%s</td>' +
+						'<td class="cbi-section-table-titles">%s</td>' +
+						'<td class="cbi-section-table-titles">%s</td>' +
+						'<td class="cbi-section-table-titles">%s</td>' +
+						'<td class="cbi-section-table-titles">%s</td>' +
+						'<td class="cbi-section-table-titles">%s</td>' +
+						'<td class="cbi-section-table-titles">%s</td>' +
+						'</tr>',
+						hosts.name, hosts.ip, hosts.port, hosts.uptime, hosts.protocol, hosts.reachable, hosts.udp, hosts.validkey
+					);
+				}
+				nt.innerHTML = s;
+			}
+		}
+	);
+//]]></script>
+
+
+<h2><a id="content" name="content"><%:Tinc Verbindungen zum ffa Netzwerk%></a></h2>
+
+<% if status.up ~= "1" then %>
+<div class="error">
+	Der Tinc Prozess läuft nicht. Wurde Tinc schon eingerichtet?
+</div>
+<% end %>
+
+<fieldset class="cbi-section">
+	<legend>Diese übersicht zeigt alle konfigurieren Tinc Verbindungen</legend>
+
+	<table class="cbi-section-table">
+		<thead>
+			<tr class="cbi-section-table-titles">
+				<th class="cbi-section-table-cell">Name</th>
+				<th class="cbi-section-table-cell">IP</th>
+				<th class="cbi-section-table-cell">Port</th>
+				<th class="cbi-section-table-cell">Online seit</th>
+				<th class="cbi-section-table-cell">Protokoll</th>
+				<th class="cbi-section-table-cell">Erreichbar</th>
+				<th class="cbi-section-table-cell">UDP</th>
+				<th class="cbi-section-table-cell">Keys gültig</th>
+			</tr>
+		</thead>
+	
+		<tbody id="tinc_table">
+
+		<%
+		local i = 1
+		for name, data in pairs(hosts) do
+			for _, v in ipairs({ 'reachable', 'validkey', 'udp_confirmed'}) do
+				if data[v] == "1" then
+					data[v] = '<img src="' .. resource .. '/cbi/save.gif" alt=" .. v .. " title=" .. v .. " />'
+				end
+				if data[v] == "0" then
+					data[v] = '<img src="' .. resource .. '/cbi/reset.gif" alt=".. v .. " title=".. v .." />'
+				end
+			end
+		%>
+		
+		<tr class="cbi-section-table-row cbi-rowstyle-<%=i%>">
+			<td class="cbi-section-table-titles"><%=name%></td>
+			<td class="cbi-section-table-titles"><%=data.ip%></td>
+			<td class="cbi-section-table-titles"><%=data.port%></td>
+			<td class="cbi-section-table-titles"><%=data.uptime%></td>
+			<td class="cbi-section-table-titles"><%=data.protocol%></td>
+			<td class="cbi-section-table-titles"><%=data.reachable%></td>
+			<td class="cbi-section-table-titles"><%=data.udp_confirmed%></td>
+			<td class="cbi-section-table-titles"><%=data.validkey%></td>
+		</tr>
+
+		<%
+			i = ((i % 2) + 1)
+		end
+		%>
+		</tbody>
+	</table>
+<br />
+
+
+</fieldset>
+<%+footer%>
