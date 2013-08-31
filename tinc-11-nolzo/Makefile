@@ -7,12 +7,12 @@
 
 include $(TOPDIR)/rules.mk
 PKG_NAME:=tinc
-PKG_VERSION:=1.1pre7
-PKG_RELEASE:=3
+PKG_VERSION:=1.1pre8
+PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=http://www.tinc-vpn.org/packages 
-PKG_MD5SUM:=f7939699c85feb930a3a103ffed2438e
+PKG_MD5SUM:=e91a68f1e7e54db7213818ca31dbbba7
 
 PKG_INSTALL:=1
 
@@ -22,7 +22,7 @@ define Package/tinc-11-nolzo
   SECTION:=net
   CATEGORY:=Network
   DEPENDS:=+libopenssl +kmod-tun
-  TITLE:=VPN tunneling daemon 1.1pre7
+  TITLE:=VPN tunneling daemon 1.1pre8
   URL:=http://www.tinc-vpn.org/
   SUBMENU:=VPN
 endef
