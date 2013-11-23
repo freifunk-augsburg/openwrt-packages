@@ -1,44 +1,65 @@
 #!/bin/sh
 
+if [ -z "$(uci -q get network.ffa)" ]; then
+	uci batch <<-EOF
+		set network.ffa=interface
+		set network.ffa.ifname=ffa
+		set network.ffa.proto=static
+		set network.ffa.ipaddr=0.0.0.0
+		set network.ffa.netmask=255.255.255.0
+	        commit network
+	EOF
+fi
+
+if [ -z "$(uci -q get firewall.wanffatinc)" ]; then
+	uci batch <<-EOF
+		set firewall.wanffatinc=rule
+		set firewall.wanffatinc.src=wan
+		set firewall.wanffatinc.dest_port=4223
+		set firewall.wanffatinc.target=ACCEPT
+		set firewall.zone_freifunk=zone
+		add_list firewall.zone_freifunk.network="ffa"
+		commit firewall
+	EOF
+fi
+
+if [ -z "$(uci -q get olsrd.ffa)" ]; then
+	uci batch <<-EOF
+		set olsrd.ffa=Interface
+		set olsrd.ffa.interface=ffa
+		set olsrd.ffa.LinkQualityMult='default 0.20'
+		set olsrd.ffa.HelloInterval=30.0
+		set olsrd.ffa.HelloValidityTime=180.0
+		set olsrd.ffa.TcInterval=8.0
+		set olsrd.ffa.TcValidityTime=540.0
+		set olsrd.ffa.MidInterval=60.0
+		set olsrd.ffa.MidValidityTime=300.0
+		set olsrd.ffa.HnaInterval=60.0
+		set olsrd.ffa.HnaValidityTime=300.0
+		commit olsrd
+	EOF
+fi
+
+if [ -z "$(uci -q get tinc.ffa)" ]; then
+	uci batch <<-EOF
+		set tinc.ffa=tinc-net
+		set tinc.ffa.generate_keys=1
+		set tinc.ffa.key_size=2048
+		set tinc.ffa.Mode=switch
+		set tinc.ffa.Port=4223
+		set tinc.ffa.DirectOnly=1
+		set tinc.ffa.IndirectData=1
+		set tinc.ffa.Broadcast=direct
+		commit tinc
+	EOF
+fi
+
 uci batch <<-EOF
-	set network.ffa=interface
-	set network.ffa.ifname=ffa
-	set network.ffa.proto=static
-	set network.ffa.ipaddr=0.0.0.0
-	set network.ffa.netmask=255.255.255.0
-        commit network
-	set firewall.wanffatinc=rule
-	set firewall.wanffatinc.src=wan
-	set firewall.wanffatinc.dest_port=4223
-	set firewall.wanffatinc.target=ACCEPT
-	set firewall.zone_freifunk=zone
-	add_list firewall.zone_freifunk.network="ffa"
-	commit firewall
-	set olsrd.ffa=Interface
-	set olsrd.ffa.interface=ffa
-	set olsrd.ffa.LinkQualityMult='default 0.20'
-	set olsrd.ffa.HelloInterval=30.0
-	set olsrd.ffa.HelloValidityTime=180.0
-	set olsrd.ffa.TcInterval=8.0
-	set olsrd.ffa.TcValidityTime=540.0
-	set olsrd.ffa.MidInterval=60.0
-	set olsrd.ffa.MidValidityTime=300.0
-	set olsrd.ffa.HnaInterval=60.0
-	set olsrd.ffa.HnaValidityTime=300.0
-	commit olsrd
-	set tinc.ffa=tinc-net
-	set tinc.ffa.generate_keys=1
-	set tinc.ffa.key_size=2048
-	set tinc.ffa.Mode=switch
-	set tinc.ffa.Port=4223
-	set tinc.ffa.DirectOnly=1
-	set tinc.ffa.IndirectData=1
-	set tinc.ffa.Broadcast=direct
-	commit tinc
 	set ucitrack.tinc=tinc
 	set ucitrack.tinc.exec="/etc/init.d/tinc restart"
 	commit ucitrack
 EOF
+
 /etc/init.d/tinc enable
 /sbin/fw3 reload
 
