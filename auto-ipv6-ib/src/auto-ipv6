@@ -29,9 +29,9 @@ olsrd_add_hna() {
 	local name="$2"
 	local net="$3"
 	local mask="${4:=64}"
-	uci set olsrd.$name=Hna6
-	uci set olsrd.$name.netaddr="${net}"
-	uci set olsrd.$name.prefix="$mask"
+	uci set olsrd6.$name=Hna6
+	uci set olsrd6.$name.netaddr="${net}"
+	uci set olsrd6.$name.prefix="$mask"
 }
 
 net_find_iface() {
@@ -306,12 +306,12 @@ for i in $(echo $interfaces) ; do
 	fi
 done
 
-if [ "6and4" == "$(uci get olsrd.@olsrd[0].IpVersion)" ] ; then
-	uci commit olsrd
-fi
+#if [ "6and4" == "$(uci get olsrd.@olsrd[0].IpVersion)" ] ; then
+	uci commit olsrd6
+#fi
 
 # clear all config variables here. else they will leak into the olsrd init script
-config_clear
+#config_clear
 
 if [ $restart_dnsmasq -eq 1 ]; then
 	# Write dnsmasq.conf. This is a hack until these things are configurable via uci
@@ -334,8 +334,8 @@ fi
 
 if [ $restart_olsrd -eq 1 ] ; then
 	if ! [ -z "$(pidof olsrd)" ] ; then
-		logger -s -t auto-ipv6 "Restarting olsrd..."
-		/etc/init.d/olsrd restart
+		logger -s -t auto-ipv6 "Restarting olsrd6..."
+		/etc/init.d/olsrd6 restart
 	fi
 fi
 
