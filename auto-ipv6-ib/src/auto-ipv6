@@ -21,6 +21,10 @@ config_get enabled "olsr_node" enabled
 	exit 0
 }
 
+txtinfoport="$(uci get olsrd6.olsrd_txtinfo.port)"
+[ -z "$txtinfoport" ] && txtinfoport="2006"
+
+
 local mode
 config_get mode "olsr_node" mode
 
@@ -51,7 +55,7 @@ ipv6uniq_from_v4() {
 get_olsr_defgw() {
 	local hnainfo
 	local defgw
-	hnainfo="$(wget -q http://[::1]:2006/hna -O -)"
+	hnainfo="$(wget -q http://[::1]:${txtinfoport}/hna -O -)"
 	ret=$?
 	if [ $ret -ne 0 ]; then
 		logger -s -t auto-ipv6 "Error: Could not connect to the txtinfo plugin."
@@ -59,11 +63,11 @@ get_olsr_defgw() {
 		return
 	fi
 
-	local IPV6_GATEWAYS="$(wget -q http://[::1]:2006/hna -O - | grep '2000::/3' | cut -d "$(printf "\t")" -f 2)"
+	local IPV6_GATEWAYS="$(wget -q http://[::1]:${txtinfoport}/hna -O - | grep '2000::/3' | cut -d "$(printf "\t")" -f 2)"
 	local DEFAULT_ETX=1000000 # Use 1000 * 1000 here, because later we remove the decimal point in the etx from routes info
 	#we need to check all gateways in hna table and see which one is the default gw by looking at the etx for each gw
 	for g in $IPV6_GATEWAYS; do
-	        local GW_ETX="$(wget -q -O - http://[::1]:2006/routes | grep ^${g} | awk '{ print $4 }'| sed 's/\.//')"
+	        local GW_ETX="$(wget -q -O - http://[::1]:${txtinfoport}/routes | grep ^${g} | awk '{ print $4 }'| sed 's/\.//')"
 	        if [ -n "$GW_ETX" ]; then
 			if [ $GW_ETX -lt $DEFAULT_ETX ]; then
 				DEFAULT_ETX="$GW_ETX"
