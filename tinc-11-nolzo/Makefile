@@ -22,7 +22,7 @@ define Package/tinc-11-nolzo
   SECTION:=net
   CATEGORY:=Network
   DEPENDS:=+libopenssl +kmod-tun
-  TITLE:=VPN tunneling daemon 1.1pre8
+  TITLE:=VPN tunneling daemon 1.1pre10
   URL:=http://www.tinc-vpn.org/
   SUBMENU:=VPN
 endef
