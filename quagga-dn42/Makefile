@@ -19,7 +19,8 @@ PKG_BUILD_DIR:=$(BUILD_DIR)/quagga-$(PKG_VERSION)
 
 PKG_CONFIG_DEPENDS:= \
 	CONFIG_PACKAGE_quagga-dn42-isisd \
-	CONFIG_PACKAGE_quagga-dn42-ripngd
+	CONFIG_PACKAGE_quagga-dn42-ripngd \
+	@BROKEN
 
 PKG_INSTALL:=1
 
