@@ -7,14 +7,16 @@
 
 include $(TOPDIR)/rules.mk
 PKG_NAME:=tinc
-PKG_VERSION:=1.1pre11
+PKG_VERSION:=1.1-git-prepre12
 PKG_RELEASE:=1
+PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-nolzo-nossl/$(PKG_NAME)-de7d9ee437bc0e5d72f8c6744e1df7ea7b64d2e9
 
-PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=http://www.tinc-vpn.org/packages
-PKG_MD5SUM:=e9cc2971927d31e703f0c2b1791a4edf
+PKG_SOURCE:=de7d9ee437bc0e5d72f8c6744e1df7ea7b64d2e9.tar.gz
+PKG_SOURCE_URL:=https://github.com/gsliepen/tinc/archive/
+PKG_MD5SUM:=43b34dd26b69b1259b37cee72aad5443
 
 PKG_INSTALL:=1
+PKG_FIXUP:=autoreconf
 
 include $(INCLUDE_DIR)/package.mk
 
@@ -35,11 +37,11 @@ endef
 TARGET_CFLAGS += -std=gnu99
 
 CONFIGURE_ARGS += \
+	--disable-legacy-protocol \
 	--disable-zlib \
 	--disable-lzo \
 	--disable-curses \
-	--disable-readline \
-	--disable-legacy-protocol
+	--disable-readline
 
 define Package/tinc-11-nolzo-nossl/install
 	$(INSTALL_DIR) $(1)/usr/sbin
