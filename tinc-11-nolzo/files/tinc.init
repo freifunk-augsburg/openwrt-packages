@@ -129,7 +129,10 @@ check_gen_own_key() {
 
 	[ ! -d "/etc/tinc/$s/hosts" ] && mkdir -p "/etc/tinc/$s/hosts"
 	cp "$TMP_TINC/$s/rsa_key.priv" "/etc/tinc/$s/"
-	cp "$TMP_TINC/$s/ecdsa_key.priv" "/etc/tinc/$s/"
+	# tinc 1.1 until pre10
+	[ -f $TMP_TINC/$s/ecdsa_key.priv ] && cp "$TMP_TINC/$s/ecdsa_key.priv" "/etc/tinc/$s/"
+	# tinc 1.1 since pre11
+	[ -f $TMP_TINC/$s/ed25519_key.priv ] && cp "$TMP_TINC/$s/ed25519_key.priv" "/etc/tinc/$s/"
 	[ -n "$n" ] && cp "$TMP_TINC/$s/hosts/$n" "/etc/tinc/$s/hosts/"
 }
 
