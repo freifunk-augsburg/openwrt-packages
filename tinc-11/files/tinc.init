@@ -150,9 +150,10 @@ prepare_net() {
 
 	# append flags
 	append_conf_bools "$s" "$TMP_TINC/$s/tinc.conf" \
-		DecrementTTL DirectOnly Hostnames IffOneQueue \
-		LocalDiscovery PriorityInheritance StrictSubnets TunnelServer \
-		ClampMSS IndirectData PMTUDiscovery TCPOnly
+		DecrementTTL DirectOnly ExperimentalProtocol Hostnames \
+		IffOneQueue LocalDiscovery PriorityInheritance \
+		StrictSubnets TunnelServer ClampMSS IndirectData \
+		PMTUDiscovery TCPOnly
 
 	# append params
 	append_conf_params "$s" "$TMP_TINC/$s/tinc.conf" \
