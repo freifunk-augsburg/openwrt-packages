@@ -12,7 +12,7 @@ PKG_RELEASE:=2
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=http://www.tinc-vpn.org/packages
-PKG_MD5SUM:=0c181baf628b2721f2dc76b5b58f511c
+PKG_MD5SUM:=e91a68f1e7e54db7213818ca31dbbba7
 
 PKG_INSTALL:=1
 
