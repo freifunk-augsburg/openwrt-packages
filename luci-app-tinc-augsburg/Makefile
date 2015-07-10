@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-tinc-augsburg
 PKG_VERSION:=0.0.2
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 
@@ -12,7 +12,7 @@ define Package/luci-app-tinc-augsburg
   SECTION:=luci
   CATEGORY:=LuCI
   SUBMENU:=3. Applications
-  DEPENDS:=+tinc-11-nolzo
+  DEPENDS:=+tinc-11pre8-nolzo
   TITLE:=Preconfigures Tinc to connect to the Freifunk Augsburg Mesh
   URL:=http://trac.augsburg.freifunk.net
 endef
