@@ -1,0 +1,3 @@
+After the package was installed you need to set your credentials (username and password)
+in /etc/openvpn/ipredator/IPredator.auth and restart openvpn.
+

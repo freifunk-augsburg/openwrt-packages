@@ -1,0 +1,52 @@
+#!/bin/sh
+
+# Firewall: interface zur firewall zone hinzufuegen
+. /lib/functions.sh
+config_load firewall
+
+add_zone_iface() {
+        config_get name "$1" name
+        if [ "$name" = "wan" ]; then
+                uci add_list firewall.${1}.device="ipredator"
+                uci changes
+                uci commit firewall
+        fi
+}
+
+config_foreach add_zone_iface zone
+# Openvpn - add a minimal openvpn configuration to /etc/config/openvpn
+# to load the config file.
+
+uci batch <<- EOF
+        set openvpn.ipredator=openvpn
+        set openvpn.ipredator.enabled=1
+        set openvpn.ipredator.config=/etc/openvpn/ipredator/openvpn-ipredator.conf
+        commit
+EOF
+
+# olsrd - enable dyngw_plain plugin and monitor table 112 (olsr-default)
+logger -p info -s -t "openvpn-gw" "Enable olsrd dyngw-plain plugin and watch table olsr-default for a inet route."
+uci batch <<- EOF
+        set olsrd.dyngw_plain=LoadPlugin
+        set olsrd.dyngw_plain.ignore=0
+        set olsrd.dyngw_plain.library="olsrd_dyn_gw_plain.so.0.4"
+        set olsrd.dyngw_plain.RtTable="112"
+        commit olsrd
+EOF
+
+# watchdog - set up a watchdog to restart openvpn in case it crashed
+uci batch <<- EOF
+        set freifunk-watchdog.openvpn=process
+        set freifunk-watchdog.openvpn.process=openvpn
+        set freifunk-watchdog.openvpn.initscript=/etc/init.d/openvpn
+        commit freifunk-watchdog
+EOF
+
+# enable/restart services
+/etc/init.d/firewall restart
+/etc/init.d/openvpn enable
+/etc/init.d/openvpn restart
+/etc/init.d/olsrd restart
+/etc/init.d/luci_splash restart
+
+exit 0
