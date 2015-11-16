@@ -12,7 +12,7 @@ define Package/openvpn-ipredator-setup
   SECTION:=net
   CATEGORY:=Network
   SUBMENU:=VPN
-  DEPENDS:=+openvpn-openssl +olsrd-mod-dyn-gw-plain
+  DEPENDS:=+openvpn +olsrd-mod-dyn-gw-plain
   TITLE:=Configuration for using ipredator openvpn with Meshkit firmware
   URL:=http://trac.augsburg.freifunk.net
 endef
