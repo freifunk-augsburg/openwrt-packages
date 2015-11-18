@@ -1,6 +1,6 @@
 #!/bin/sh
 
-vpnservers="$(/bin/grep remote /etc/openvpn/ipredator/openvpn-ipredator.conf  | awk '{ print $2 }')"
+vpnservers="$(/bin/grep 'remote ' /etc/openvpn/ipredator/openvpn-ipredator.conf  | awk '{ print $2 }')"
 
 resolve() {
 	echo "$(nslookup $1 2>/dev/null |grep 'Address' |grep -v '127.0.0.1' |awk '{ print $3 }')"
